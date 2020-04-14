@@ -19,7 +19,7 @@ pub enum Event {
 
 impl Event {
     // https://docs.rs/glutin/0.21.2/glutin/enum.Event.html
-    pub fn parse(ev: glutin::event::Event<()>) -> Self {
+    pub fn parse(ev: &glutin::event::Event<()>) -> Self {
         match ev {
             glutin::event::Event::DeviceEvent {
                 device_id: _,
@@ -28,7 +28,7 @@ impl Event {
             _ => Self::Default,
         }
     }
-    pub fn parse_relevant(ev: glutin::event::Event<()>) -> Option<Self>
+    pub fn parse_relevant(ev: &glutin::event::Event<()>) -> Option<Self>
     {
         match Self::parse(ev)
         {
@@ -38,12 +38,12 @@ impl Event {
     }
 
     // https://docs.rs/glutin/0.21.2/glutin/enum.DeviceEvent.html
-    fn parse_device_event(ev: glutin::event::DeviceEvent) -> Self {
+    fn parse_device_event(ev: &glutin::event::DeviceEvent) -> Self {
         match ev {
             glutin::event::DeviceEvent::Key(keyboard_input) => Self::parse_touche_clavier(keyboard_input),
             glutin::event::DeviceEvent::MouseMotion { delta } => Self::parse_mouvement_souris(delta),
             glutin::event::DeviceEvent::Button { button, state } => {
-                Self::parse_bouton_souris(button, state)
+                Self::parse_bouton_souris(*button, state)
             }
             glutin::event::DeviceEvent::MouseWheel { delta } => Self::parse_scroll(delta),
             _ => Self::Default,
@@ -51,7 +51,7 @@ impl Event {
     }
 
     // https://docs.rs/glutin/0.21.2/glutin/struct.KeyboardInput.html
-    fn parse_touche_clavier(ev: glutin::event::KeyboardInput) -> Self {
+    fn parse_touche_clavier(ev: &glutin::event::KeyboardInput) -> Self {
         let key = Key::convert_key(ev.virtual_keycode, ev.scancode);
         match ev.state {
             glutin::event::ElementState::Pressed => Self::KeyPressed(key),
@@ -60,12 +60,12 @@ impl Event {
     }
 
     // https://docs.rs/glutin/0.21.2/glutin/enum.DeviceEvent.html
-    fn parse_mouvement_souris(ev: (f64, f64)) -> Self {
+    fn parse_mouvement_souris(ev: &(f64, f64)) -> Self {
         return Self::MouseMove(ev.0, ev.1);
     }
 
     // https://docs.rs/glutin/0.21.2/glutin/enum.DeviceEvent.html
-    fn parse_bouton_souris(ev: u32, state: glutin::event::ElementState) -> Self {
+    fn parse_bouton_souris(ev: u32, state: &glutin::event::ElementState) -> Self {
         let button = match ev {
             1 => Button::LeftClick,
             2 => Button::CentralClick,
@@ -79,9 +79,9 @@ impl Event {
     }
 
     // https://docs.rs/glutin/0.21.2/glutin/enum.MouseScrollDelta.html
-    fn parse_scroll(ev: glutin::event::MouseScrollDelta) -> Self {
+    fn parse_scroll(ev: &glutin::event::MouseScrollDelta) -> Self {
         match ev {
-            glutin::event::MouseScrollDelta::LineDelta(x, y) => Self::ScrollMouse(x, y),
+            glutin::event::MouseScrollDelta::LineDelta(x, y) => Self::ScrollMouse(*x, *y),
 
             _ => Self::Default,
         }

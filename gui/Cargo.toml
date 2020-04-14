@@ -10,11 +10,13 @@ edition = "2018"
 base = { path = "../base" }
 events_handling = {path = "../events_handling"}
 graphics = { path = "../graphics" }
-glutin="0.21.2"
 
-glium = "*"
 imgui = "*"
 image = "*"
 imgui-sys = "*"
 imgui-glium-renderer = "*"
 imgui-winit-support = "*"
+
+nalgebra="*"
+nalgebra-glm="*"
+rand="*"

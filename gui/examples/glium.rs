@@ -2,8 +2,8 @@
 extern crate gui;
 extern crate graphics;
 extern crate events_handling;
-extern crate glium;
-extern crate glutin;
+use graphics::glium;
+use graphics::glutin;
 extern crate image;
 extern crate imgui;
 extern crate imgui_glium_renderer;

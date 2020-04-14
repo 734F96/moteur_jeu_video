@@ -12,7 +12,7 @@ Destroyed uppon displaying.
 This is a wrapper around glium::Frame with custom methods.
 */
 pub struct Frame {
-    frame: glium::Frame,
+    pub frame: glium::Frame,
 }
 
 impl Frame {
