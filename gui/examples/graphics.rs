@@ -17,9 +17,10 @@ use nalgebra_glm::{vec3, vec4, translation, rotation, TMat4};
 use glium::glutin::event_loop::{EventLoop, ControlFlow};
 
 
-use imgui::{Context};
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use imgui_glium_renderer::Renderer;
+use imgui::{Context, Window, im_str, Condition, Ui};
+
 /**
 The Game structure
 It owns everything
@@ -36,12 +37,13 @@ struct Game
 
     gui_context: Context,
     gui_renderer: Renderer,
-    gui_platform: WinitPlatform
+    gui_platform: WinitPlatform,
+    gui_content: fn(&mut Ui), 
 }
 
 impl Game
 {
-    fn new(logic: fn(&mut Self), event_loop: &EventLoop<()>) -> Self
+    fn new(logic: fn(&mut Self), gui: fn(&mut Ui), event_loop: &EventLoop<()>) -> Self
     {
         let base = Base::new();
         let mut holder = RessourcesHolder::new();
@@ -77,11 +79,12 @@ impl Game
 
             gui_context: imgui,
             gui_renderer: renderer,
-            gui_platform: platform
+            gui_platform: platform,
+            gui_content: gui
         }
 
     }
-
+    
     fn set_scene(&mut self, scene: Scene)
     {
         self.scene = scene;
@@ -98,21 +101,10 @@ impl Game
         
 
         // gui
-        use imgui::{Window, im_str, Condition};
         let mut ui = self.gui_context.frame();
-        Window::new(im_str!("Hello world"))
-            .size([300.0, 110.0], Condition::FirstUseEver)
-            .build(&ui, || {
-                ui.text(im_str!("Hello world!"));
-                ui.text(im_str!("こんにちは世界！"));
-                ui.text(im_str!("This...is...imgui-rs!"));
-                ui.separator();
-                let mouse_pos = ui.io().mouse_pos;
-                ui.text(format!(
-                    "Mouse Position: ({:.1},{:.1})",
-                    mouse_pos[0], mouse_pos[1]
-                ));
-            });
+
+        (self.gui_content)(&mut ui);
+        
         let draw_data = ui.render();
         self.gui_renderer
             .render(&mut frame.frame, draw_data)
@@ -234,6 +226,81 @@ fn game_logic(game: &mut Game)
 }
 
 
+fn render_gui(ui: &mut Ui)
+{
+            Window::new(im_str!("Hello world"))
+            .size([300.0, 110.0], Condition::FirstUseEver)
+            .build(&ui, || {
+                ui.text(im_str!("Hello world!"));
+                ui.text(im_str!("こんにちは世界！"));
+                ui.text(im_str!("This...is...imgui-rs!"));
+                ui.separator();
+                let mouse_pos = ui.io().mouse_pos;
+                ui.text(format!(
+                    "Mouse Position: ({:.1},{:.1})",
+                    mouse_pos[0], mouse_pos[1]
+                ));
+            });
+
+    Window::new(im_str!("Bye world"))
+            .size([300.0, 110.0], Condition::FirstUseEver)
+            .build(&ui, || {
+                ui.text(im_str!("Hello world!"));
+                ui.text(im_str!("こんにちは世界！"));
+                ui.text(im_str!("This...is...imgui-rs!"));
+                ui.separator();
+                let mouse_pos = ui.io().mouse_pos;
+                ui.text(format!(
+                    "Mouse Position: ({:.1},{:.1})",
+                    mouse_pos[0], mouse_pos[1]
+                ));
+            });
+
+    #[derive(Default)]
+struct State {
+    example: u32,
+    notify_text: &'static str,
+    simple_bool: bool,
+    number: u8,
+    // We use Option here because we don't want any initial value.
+    // Another choice could be to choose one of the Choice enum values to be the default.
+    choice: Option<Choice>,
+}
+
+    
+#[derive(Copy, Clone, PartialEq)]
+enum Choice {
+    A,
+    B,
+    C,
+}
+
+    impl State {
+    fn reset(&mut self) {
+        self.notify_text = "";
+    }
+}
+    let mut state = State::default();
+    let run = &mut true;
+let w = Window::new(im_str!("Radio button examples"))
+        .opened(run)
+        .position([20.0, 20.0], Condition::Appearing)
+        .size([700.0, 80.0], Condition::Appearing)
+        .resizable(false);
+    w.build(&ui, || {
+        let mut clicked = false;
+        clicked |= ui.radio_button(
+            im_str!("Example 1: Boolean radio buttons"),
+            &mut state.example,
+            1,
+        );
+        clicked |= ui.radio_button(im_str!("Example 2: Radio buttons"), &mut state.example, 2);
+        if clicked {
+            state.reset();
+        }
+    });
+}
+
 
 
 fn new_transformation((tx, ty, tz): (f32, f32, f32),
@@ -318,7 +385,7 @@ fn main() -> Result<(), EngineError>
 {
     
     let event_loop = EventLoop::new();
-    let game = Game::new(game_logic, &event_loop);
+    let game = Game::new(game_logic, render_gui, &event_loop);
     game.run(event_loop)
 
 }
