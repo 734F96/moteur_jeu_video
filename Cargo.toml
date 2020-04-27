@@ -16,3 +16,9 @@ events_handling = {path = "events_handling"}
 physics = {path = "physics"}
 rand = "*"
 movable="*"
+
+imgui = "*"
+image = "*"
+imgui-sys = "*"
+imgui-glium-renderer = "*"
+imgui-winit-support = "*"

@@ -3,9 +3,14 @@ use graphics::{Scene, Graphical, Frame};
 use events_handling::DevicesState;
 use graphics::glium::glutin::event_loop::EventLoopProxy;
 
+use imgui::{Ui, Context};
+use imgui_glium_renderer::Renderer;
+
+
 pub struct GameState
 {
     pub scene: Scene,
+    gui: Option<fn(&mut Ui)>,
     pub logic: fn(&mut GameState, &DevicesState),
     render_behavior: RenderBehavior,
     logic_behavior: LogicBehavior,
@@ -20,6 +25,7 @@ impl GameState
                logic: fn(&mut GameState, &DevicesState),
                render_behavior: RenderBehavior,
                logic_behavior: LogicBehavior,
+               gui: Option<fn(&mut Ui)>,
                proxy: EventLoopProxy<GameEvent>) -> Self
     {
         Self
@@ -27,6 +33,7 @@ impl GameState
             scene: scene,
             logic: logic,
             render_behavior: render_behavior,
+            gui: gui,
             logic_behavior: logic_behavior,
             proxy: proxy
         }
@@ -80,7 +87,12 @@ impl GameStateStack
     {
         self.0.iter_mut()
     }
-    pub fn render(&mut self, gr: &Graphical, frame: &mut Frame)
+    
+    pub fn render(&mut self,
+                  gr: &Graphical,
+                  gui_renderer: &mut Renderer,
+                  frame: &mut Frame,
+                  gui_context: &mut Context)
     {
         let first_block = self.iter()
             .rposition(|state| state.render_behavior == RenderBehavior::Blocking);
@@ -92,9 +104,24 @@ impl GameStateStack
         for state in self.iter_mut().skip(to_skip)
             .filter(|state| state.render_behavior != RenderBehavior::NoRender)
         {
-            state.scene.render(gr, frame)
+            state.scene.render(gr, frame);
+
+        // gui
+            if let Some(gui) = state.gui
+            {
+                let mut ui = gui_context.frame();
+                
+                (gui)(&mut ui);
+                
+                let draw_data = ui.render();
+                gui_renderer
+                    .render(&mut frame.frame, draw_data)
+                    .expect("Rendering failed GUI on frame");
+            }
         }
     }
+
+    
     pub fn logic(&mut self, devices: &DevicesState)
     {
         let first_block = self.iter()

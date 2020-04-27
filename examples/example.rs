@@ -16,6 +16,9 @@ use graphics::{
 use events_handling::{Key, DevicesState};
 
 
+use imgui_winit_support::{HiDpiMode, WinitPlatform};
+use imgui_glium_renderer::Renderer;
+use imgui::{Context, Window, im_str, Condition, Ui};
 
 
 fn make_main_scene(
@@ -151,7 +154,8 @@ fn game_logic(game_state: &mut GameState,
         game_state.send_event(GameEvent::Push(
             make_menu_scene, menu_logic,
             RenderBehavior::Superpose,
-            LogicBehavior::Blocking
+            LogicBehavior::Blocking,
+            Some(render_gui)
         ));
     }
     game_state.scene.camera.relative_move(camera_pos);
@@ -171,17 +175,38 @@ fn menu_logic(game_state: &mut GameState,
 
 
 
+fn render_gui(ui: &mut Ui)
+{
+            Window::new(im_str!("Hello world"))
+            .size([300.0, 110.0], Condition::FirstUseEver)
+            .build(&ui, || {
+                ui.text(im_str!("Hello world!"));
+                ui.text(im_str!("こんにちは世界！"));
+                ui.text(im_str!("This...is...imgui-rs!"));
+                ui.separator();
+                let mouse_pos = ui.io().mouse_pos;
+                ui.text(format!(
+                    "Mouse Position: ({:.1},{:.1})",
+                    mouse_pos[0], mouse_pos[1]
+                ));
+            });
+
+}
+
+
 
 fn main() -> Result<(), EngineError>
 {
     
-    let mut game = Game::new();
+    let mut game = Game::new(render_gui);
     game.push_state(make_main_scene, game_logic,
                     RenderBehavior::Superpose,
-                    LogicBehavior::Superpose);
+                    LogicBehavior::Superpose,
+                    None);
     game.push_state(make_menu_scene, menu_logic,
                     RenderBehavior::Superpose,
-                    LogicBehavior::Blocking);
+                    LogicBehavior::Blocking,
+                    Some(render_gui));
     game.run()
 
 }
