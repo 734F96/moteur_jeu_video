@@ -1,0 +1,18 @@
+[package]
+name = "moteur_jeu_video"
+version = "0.1.0"
+authors = ["technolapin <clement.chomicki@protonmail.fr>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+
+[dependencies]
+
+graphics = {path = "graphics"}
+base = { path = "base" }
+events_handling = {path = "events_handling"}
+physics = {path = "physics"}
+rand = "*"
+movable="*"

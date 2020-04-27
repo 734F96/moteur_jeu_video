@@ -46,7 +46,7 @@ impl Holder<Wavefront>
         &self,
         file: &str,
         model_name: &str,
-    ) -> Result<Vec<(Group)>, EngineError> {
+    ) -> Result<Vec<Group>, EngineError> {
         match self.get(file) {
             Some(wavefront) => wavefront.get_object(model_name.to_string()),
             None => EngineError::new("file doesn't exist!"),

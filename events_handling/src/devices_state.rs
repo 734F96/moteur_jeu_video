@@ -3,7 +3,8 @@ use crate::{Key, Button};
 
 pub struct DevicesState
 {
-    pub keyboard_state: HashSet<Key>,
+    pub keyboard_pressed: HashSet<Key>,
+    pub keyboard_continuous: HashSet<Key>,
     pub mouse_state: HashSet<Button>,
     pub mouse_move: (f64, f64),
     pub mouse_scroll: (f32, f32),
@@ -16,7 +17,8 @@ impl DevicesState
     {
         Self
         {
-            keyboard_state: HashSet::new(),
+            keyboard_pressed: HashSet::new(),
+            keyboard_continuous: HashSet::new(),
             mouse_state: HashSet::new(),
             mouse_move: (0., 0.),
             mouse_scroll: (0., 0.)
@@ -25,8 +27,21 @@ impl DevicesState
 
     pub fn key_pressed(&self, key: Key) -> bool
     {
-        self.keyboard_state.contains(&key)
+        self.keyboard_pressed.contains(&key)
     }
+    pub fn clear(&mut self)
+    {
+        for key in self.keyboard_pressed.drain()
+        {
+            self.keyboard_continuous.insert(key);
+        }
+//        self.keyboard_pressed.clear();
+    }
+    pub fn key_continuous(&self, key: Key) -> bool
+    {
+        self.keyboard_continuous.contains(&key)
+    }
+    
     pub fn button_pressed(&self, button: Button) -> bool
     {
         self.mouse_state.contains(&button)

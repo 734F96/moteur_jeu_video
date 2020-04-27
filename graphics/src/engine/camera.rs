@@ -1,6 +1,7 @@
 use nalgebra_glm::{look_at, rotate_x_vec3, rotate_y_vec3, rotate_z_vec3};
 use nalgebra::{Matrix3, Vector3, Perspective3};
 
+use super::Graphical;
 
 pub struct Projection
 {
@@ -117,5 +118,11 @@ impl Camera {
 	let perspective = Perspective3::new(self.aspect_ratio, self.fov, self.projection.znear, 		self.projection.zfar);
 	let perspective_matrix = perspective.as_matrix().as_ref() ;
 	*perspective_matrix
+    }
+
+    pub fn update_aspect_ratio(&mut self, gr: &Graphical)
+    {
+        let (w, h) = gr.display.display.get_framebuffer_dimensions();
+        self.set_aspect_ratio(w as f32, h as f32);
     }
 }

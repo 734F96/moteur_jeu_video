@@ -15,7 +15,7 @@ pub struct Display
 impl Display
 {
     /// returns a Display using the given EventLoop
-    pub fn new(event_loop: &EventLoop<()>) -> Self
+    pub fn new<T>(event_loop: &EventLoop<T>) -> Self
     {	
 	let wb = WindowBuilder::new();  
 	let cb = ContextBuilder::new().with_depth_buffer(24); 

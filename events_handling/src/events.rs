@@ -1,7 +1,7 @@
 use crate::*;
 use glium::glutin;
 #[derive(Debug, Clone, Copy)]
-pub enum Event {
+pub enum Event<T> {
     KeyPressed(Key),
     KeyReleased(Key),
     ButtonPressed(Button),
@@ -15,20 +15,23 @@ pub enum Event {
 
     // ------------------------------------------
     Default, // Truc par défaut
+    GameEvent(T)
 }
 
-impl Event {
+impl<T> Event<T> {
     // https://docs.rs/glutin/0.21.2/glutin/enum.Event.html
-    pub fn parse(ev: glutin::event::Event<()>) -> Self {
-        match ev {
+    pub fn parse(ev: glutin::event::Event<T>) -> Self {
+        match ev
+        {
             glutin::event::Event::DeviceEvent {
                 device_id: _,
                 event,
             } => Self::parse_device_event(event),
+            glutin::event::Event::UserEvent(e) => Self::GameEvent(e),
             _ => Self::Default,
         }
     }
-    pub fn parse_relevant(ev: glutin::event::Event<()>) -> Option<Self>
+    pub fn parse_relevant(ev: glutin::event::Event<T>) -> Option<Self>
     {
         match Self::parse(ev)
         {
