@@ -32,7 +32,7 @@ pub enum GameEvent
         fn(&mut GameState, &DevicesState),
         RenderBehavior,
         LogicBehavior,
-        Option<fn(&mut Ui)>
+        Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>
     )
 }
 
@@ -56,14 +56,14 @@ pub struct Game
     gui_context: Context,
     gui_renderer: Renderer,
     gui_platform: WinitPlatform,
-    gui_content: fn(&mut Ui), 
+    gui_content: fn(&mut Ui, &EventLoopProxy<GameEvent>), 
 
 }
 
 impl Game
 {
     pub fn new(
-        gui: fn(&mut Ui),
+        gui: fn(&mut Ui, &EventLoopProxy<GameEvent>),
     ) -> Self
     {
         let event_loop = EventLoop::<GameEvent>::with_user_event();
@@ -151,7 +151,7 @@ impl Game
                       logic: fn(&mut GameState, &DevicesState),
                       render_behavior: RenderBehavior,
                       logic_behavior: LogicBehavior,
-                      maybe_gui: Option<fn(&mut Ui)>
+                      maybe_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>
     ) -> Result<(), base::EngineError>
     {
         let scene = scene_maker(self)?;
@@ -221,21 +221,20 @@ impl Game
         self.event_loop.consume()
             .run(move |event, _, control_flow|
                  {
-                     // gui stuff
+                     // gui events
                      {
                          let gl_window = self.graphic_engine.display.display.gl_window();
-                         self.gui_platform.handle_event(self.gui_context.io_mut(), gl_window.window(), &event);
+                         self.gui_platform.handle_event(
+                             self.gui_context.io_mut(),
+                             gl_window.window(),
+                             &event);
                      }
                      
                      // inputs
                      if let Some(ev) = Event::parse_relevant(event)
                      {
                          *control_flow = self.handle_event(ev);
-                     } 
-
-                     // game logic
-                                          
-
+                     }
                      
                      // render
                      now = std::time::Instant::now();

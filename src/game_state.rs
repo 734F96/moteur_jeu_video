@@ -10,7 +10,7 @@ use imgui_glium_renderer::Renderer;
 pub struct GameState
 {
     pub scene: Scene,
-    gui: Option<fn(&mut Ui)>,
+    gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
     pub logic: fn(&mut GameState, &DevicesState),
     render_behavior: RenderBehavior,
     logic_behavior: LogicBehavior,
@@ -25,7 +25,7 @@ impl GameState
                logic: fn(&mut GameState, &DevicesState),
                render_behavior: RenderBehavior,
                logic_behavior: LogicBehavior,
-               gui: Option<fn(&mut Ui)>,
+               gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
                proxy: EventLoopProxy<GameEvent>) -> Self
     {
         Self
@@ -111,7 +111,7 @@ impl GameStateStack
             {
                 let mut ui = gui_context.frame();
                 
-                (gui)(&mut ui);
+                (gui)(&mut ui, &state.proxy);
                 
                 let draw_data = ui.render();
                 gui_renderer

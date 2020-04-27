@@ -3,7 +3,7 @@ extern crate moteur_jeu_video;
 use moteur_jeu_video::{Game, GameState, RenderBehavior, LogicBehavior, GameEvent};
 use ::base::{Base, EngineError};
 use graphics::{
-    glium::glutin::event_loop::EventLoop,
+    glium::glutin::event_loop::EventLoopProxy,
     nalgebra::Vector3,
     nalgebra_glm::{TMat4, vec3, vec4, translation, rotation},
     Similarity,
@@ -148,9 +148,6 @@ fn game_logic(game_state: &mut GameState,
         camera_pos[0] = camera_pos[0] - speed;
     }
     if devices.key_pressed(Key::Escape) {
-        game_state.send_event(GameEvent::QuitRequested);
-    }
-    if devices.key_pressed(Key::P) {
         game_state.send_event(GameEvent::Push(
             make_menu_scene, menu_logic,
             RenderBehavior::Superpose,
@@ -175,21 +172,25 @@ fn menu_logic(game_state: &mut GameState,
 
 
 
-fn render_gui(ui: &mut Ui)
+fn render_gui(ui: &mut Ui, proxy: &EventLoopProxy<GameEvent>)
 {
-            Window::new(im_str!("Hello world"))
-            .size([300.0, 110.0], Condition::FirstUseEver)
-            .build(&ui, || {
-                ui.text(im_str!("Hello world!"));
-                ui.text(im_str!("こんにちは世界！"));
-                ui.text(im_str!("This...is...imgui-rs!"));
-                ui.separator();
-                let mouse_pos = ui.io().mouse_pos;
-                ui.text(format!(
-                    "Mouse Position: ({:.1},{:.1})",
-                    mouse_pos[0], mouse_pos[1]
-                ));
-            });
+    Window::new(im_str!("Hello world"))
+        .size([300.0, 110.0], Condition::FirstUseEver)
+        .build(&ui, || {
+            if ui.button(im_str!("QUIT"), [60.0, 36.0])
+            {
+                proxy.send_event(GameEvent::QuitRequested);
+            };
+            ui.text(im_str!("Hello world!"));
+            ui.text(im_str!("こんにちは世界！"));
+            ui.text(im_str!("This...is...imgui-rs!"));
+            ui.separator();
+            let mouse_pos = ui.io().mouse_pos;
+            ui.text(format!(
+                "Mouse Position: ({:.1},{:.1})",
+                mouse_pos[0], mouse_pos[1]
+            ));
+        });
 
 }
 
