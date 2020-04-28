@@ -1,4 +1,4 @@
-use graphics::{Graphical, Display};
+use graphics::Graphical;
 
 use graphics::RessourcesHolder;
 use graphics::Scene;
@@ -10,31 +10,17 @@ use graphics::glium;
 use glium::glutin;
 use glutin::event_loop::{EventLoop, ControlFlow, EventLoopProxy};
 
-use super::{GameState, GameStateStack, RenderBehavior, LogicBehavior};
+use super::{GameState, GameStateStack, RenderBehavior, LogicBehavior, GameEvent};
 
 use std::cell::RefCell;
-use std::sync::Arc;
 
 use movable::Movable;
 
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use imgui_glium_renderer::Renderer;
-use imgui::{Context, Window, im_str, Condition, Ui};
+use imgui::{Context, Ui};
 
 
-
-pub enum GameEvent
-{
-    QuitRequested,
-    Pop(usize),
-    Push(
-        fn(&mut Game) -> Result<Scene, EngineError>,
-        fn(&mut GameState, &DevicesState),
-        RenderBehavior,
-        LogicBehavior,
-        Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>
-    )
-}
 
 
 
@@ -50,21 +36,18 @@ pub struct Game
     pub base: Base,
     pub devices: RefCell<DevicesState>,
     event_loop: Movable<EventLoop<GameEvent>>,
-    event_loop_proxy: EventLoopProxy<GameEvent>,
+    pub event_loop_proxy: EventLoopProxy<GameEvent>,
     pub states: RefCell<GameStateStack>,
 
     gui_context: Context,
     gui_renderer: Renderer,
     gui_platform: WinitPlatform,
-    gui_content: fn(&mut Ui, &EventLoopProxy<GameEvent>), 
 
 }
 
 impl Game
 {
-    pub fn new(
-        gui: fn(&mut Ui, &EventLoopProxy<GameEvent>),
-    ) -> Self
+    pub fn new() -> Self
     {
         let event_loop = EventLoop::<GameEvent>::with_user_event();
         let base = Base::new();
@@ -108,7 +91,6 @@ impl Game
             gui_context: imgui,
             gui_renderer: renderer,
             gui_platform: platform,
-            gui_content: gui
         }
 
     }
@@ -131,39 +113,39 @@ impl Game
     }
 
     /// useless for now
-    fn init(&mut self) -> Result<(), base::EngineError>
-    {
-        /*
-        let scene = make_scene(
-            &self.graphic_engine.display,
-            &mut self.ressources,
-            &self.base
-        )?;
-
-        self.set_scene(scene);
-*/
-        Ok(())
-    }
-
         /// useless for now
     pub fn push_state(&mut self,
-                      scene_maker: fn(&mut Game) -> Result<Scene, EngineError>,
-                      logic: fn(&mut GameState, &DevicesState),
-                      render_behavior: RenderBehavior,
-                      logic_behavior: LogicBehavior,
-                      maybe_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>
+                      name: &str
     ) -> Result<(), base::EngineError>
     {
-        let scene = scene_maker(self)?;
-        let state = GameState::new(scene, logic,
-                                   render_behavior,
-                                   logic_behavior,
-                                   maybe_gui,
-                                   self.event_loop_proxy.clone());
-        self.states.borrow_mut().push(state);
+        let proto = self.states.get_mut().get_proto(name.to_string())?;
+        let state = GameState::from_proto(self, &proto)?;
+        self.states.get_mut()
+            .push(state);
         Ok(())
     }
 
+    pub fn register_state(
+        &mut self,
+        name: &str,
+        scene_builder: fn(&mut Game) -> Result<Scene, EngineError>,
+        run_logic: fn(&mut GameState, &DevicesState),
+        run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
+        render_behavior: RenderBehavior,
+        logic_behavior: LogicBehavior,
+
+    )
+    {
+        self.states.get_mut()
+            .register(
+                name,
+                scene_builder,
+                run_gui,
+                run_logic,
+                render_behavior,
+                logic_behavior)
+    }
+    
     fn pop_state(&self, n_to_pop: usize)
     {
         if n_to_pop > 0
@@ -199,8 +181,12 @@ impl Game
                 {
                     GameEvent::QuitRequested => return ControlFlow::Exit,
                     GameEvent::Pop(n) => self.pop_state(n),
-                    GameEvent::Push(scene_maker, logic, render_bhv, logic_bhv, maybe_gui) =>
-                        {self.push_state(scene_maker, logic, render_bhv, logic_bhv, maybe_gui);}
+                    GameEvent::Push(state_name) =>
+                    {
+                        self.push_state(
+                            &state_name
+                        ).unwrap();
+                    }
                 }
             }
             _ => ()
@@ -248,9 +234,7 @@ impl Game
                              devices.clear();
                          }
 
-                         
-                         let delta = (now-render_date+delay).as_nanos();
-                         //println!("{} fps ({} ns)", 1_000_000_000/(delta+1), delta);
+
                          self.render();
                          render_date = now + delay;
                      }

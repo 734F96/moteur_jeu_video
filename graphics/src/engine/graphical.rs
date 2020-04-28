@@ -1,4 +1,4 @@
-use super::{Camera, Frame, Display, ProgramsHolder};
+use super::{Frame, Display, ProgramsHolder};
 use crate::ressource_handling::RessourcesHolder;
 use base::Base;
 use glium::glutin::event_loop::EventLoop;

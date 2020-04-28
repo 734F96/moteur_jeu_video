@@ -40,7 +40,6 @@ impl Frame {
             .for_each(|(group, program)|
                       self.draw_group
                       (
-                          gr,
                           &group.vertexes,
                           per_instance,
                           &group.material,
@@ -55,7 +54,6 @@ impl Frame {
     /// Draws a group of Object (part of the Object) in the Frame, called by fn draw, with a specific material and program
     pub fn draw_group(
         &mut self,
-        gr: &Graphical,
         vertex_buffer: &glium::vertex::VertexBufferAny,
         per_instance: &glium::VertexBuffer<Similarity>,
         material: &Material,

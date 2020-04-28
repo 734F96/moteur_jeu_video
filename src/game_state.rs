@@ -1,4 +1,4 @@
-use super::{Game, GameEvent};
+use super::{GameEvent, Game};
 use graphics::{Scene, Graphical, Frame};
 use events_handling::DevicesState;
 use graphics::glium::glutin::event_loop::EventLoopProxy;
@@ -6,6 +6,9 @@ use graphics::glium::glutin::event_loop::EventLoopProxy;
 use imgui::{Ui, Context};
 use imgui_glium_renderer::Renderer;
 
+use base::EngineError;
+
+use std::collections::HashMap;
 
 pub struct GameState
 {
@@ -38,14 +41,33 @@ impl GameState
             proxy: proxy
         }
     }
+    
+    pub fn from_proto(
+        game: &mut Game,
+        proto: &ProtoState) -> Result<Self, EngineError>
+    {
+        Ok(Self
+        {
+            scene: (proto.scene_builder)(game)?,
+            logic: proto.run_logic,
+            render_behavior: proto.render_behavior,
+            gui: proto.run_gui,
+            logic_behavior: proto.logic_behavior,
+            proxy: game.event_loop_proxy.clone()
+        })
+    }
 
     pub fn send_event(&self, user_event: GameEvent)
     {
-        self.proxy.send_event(user_event);
+        match self.proxy.send_event(user_event)
+        {
+            Err(_) => panic!("Cannot send user event: Event Loop terminated"),
+            _ => ()
+        }
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum RenderBehavior
 {
     NoRender,
@@ -53,39 +75,108 @@ pub enum RenderBehavior
     Blocking
 }
 
-#[derive(Debug, PartialEq)]
+
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum LogicBehavior
 {
     Superpose,
     Blocking
 }
 
-pub struct GameStateStack(Vec<GameState>);
+pub struct GameStateStack
+{
+    stack: Vec<GameState>,
+    register: HashMap<String, ProtoState>
+}
+
 
 impl GameStateStack
 {
     pub fn new() -> Self
     {
-        Self(Vec::new())
+        Self
+        {
+            stack: Vec::new(),
+            register: HashMap::new()
+        }
     }
 
+    pub fn register_proto(
+        &mut self,
+        name: &str,
+        proto: ProtoState      
+    )
+    {
+        self.register.insert(name.to_string(), proto);
+    }
+
+    pub fn get_proto(&self, name: String) -> Result<ProtoState, EngineError>
+    {
+        match self.register.get(&name)
+        {
+            Some(proto) => Ok(proto.clone()),
+            None => EngineError::new(&format!("Game State {} not registered", name))
+        }
+    }
+    
+    pub fn register(
+        &mut self,
+        name: &str,
+        scene_builder: fn(&mut Game) -> Result<Scene, EngineError>,
+        run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
+        run_logic: fn(&mut GameState, &DevicesState),
+        render_behavior: RenderBehavior,
+        logic_behavior: LogicBehavior,
+    
+    )
+    {
+        self.register.insert(
+            name.to_string(),
+            ProtoState
+            {
+                scene_builder: scene_builder,
+                run_gui: run_gui,
+                run_logic: run_logic,
+                render_behavior: render_behavior,
+                logic_behavior: logic_behavior
+            });
+    }
+
+    pub fn push_registered(&mut self, name: String, game: &mut Game) -> Result<(), EngineError>
+    {
+        if let Some(proto) = self.register.get(&name)
+        {
+            self.stack.push(
+                GameState::from_proto(
+                    game,
+                    proto
+                )?
+            );
+            Ok(())
+        }
+        else
+        {
+            EngineError::new("Could not push state into stack")
+        }
+    }
+    
     pub fn push(&mut self, state: GameState)
     {
-        self.0.push(state);
+        self.stack.push(state);
     }
 
     pub fn pop(&mut self)
     {
-        self.0.pop();
+        self.stack.pop();
     }
 
     pub fn iter(&self) -> std::slice::Iter<GameState>
     {
-        self.0.iter()
+        self.stack.iter()
     }
     pub fn iter_mut(&mut self) -> std::slice::IterMut<GameState>
     {
-        self.0.iter_mut()
+        self.stack.iter_mut()
     }
     
     pub fn render(&mut self,
@@ -136,4 +227,15 @@ impl GameStateStack
             (state.logic)(state, devices);
         }
     }
+}
+
+#[derive(Clone, Copy)]
+pub struct ProtoState
+{
+    scene_builder: fn(&mut Game) -> Result<Scene, EngineError>,
+    run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
+    run_logic: fn(&mut GameState, &DevicesState),
+    render_behavior: RenderBehavior,
+    logic_behavior: LogicBehavior,
+   
 }

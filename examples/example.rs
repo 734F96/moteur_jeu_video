@@ -1,7 +1,7 @@
 extern crate moteur_jeu_video;
 
 use moteur_jeu_video::{Game, GameState, RenderBehavior, LogicBehavior, GameEvent};
-use ::base::{Base, EngineError};
+use ::base::EngineError;
 use graphics::{
     glium::glutin::event_loop::EventLoopProxy,
     nalgebra::Vector3,
@@ -9,16 +9,12 @@ use graphics::{
     Similarity,
     get_ressources_path,
     Scene,
-    RessourcesHolder,
-    Display,
     Params
 };
 use events_handling::{Key, DevicesState};
 
 
-use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use imgui_glium_renderer::Renderer;
-use imgui::{Context, Window, im_str, Condition, Ui};
+use imgui::{Window, im_str, Condition, Ui};
 
 
 fn make_main_scene(
@@ -55,12 +51,6 @@ fn make_main_scene(
     
     holder.add_tile(&disp, &base, "edgytet.png")?;
     
-    let tile = holder.get_tile("edgytet", &disp)?;
-
-    let tile_position = vec![Similarity {
-        world_transformation: new_transformation((0., 0., 0.), (0., 0., 0.), 1.)
-    }];
-
     
 
     // le buffer d'instanciation pour les cubes
@@ -88,8 +78,6 @@ fn make_menu_scene(
     let disp = &game.graphic_engine.display;
     let holder = &mut game.ressources;
     let base = &game.base;
-    let ressources_path = get_ressources_path();
-
     
     holder.add_tile(&disp, &base, "edgytet.png")?;
     
@@ -148,12 +136,7 @@ fn game_logic(game_state: &mut GameState,
         camera_pos[0] = camera_pos[0] - speed;
     }
     if devices.key_pressed(Key::Escape) {
-        game_state.send_event(GameEvent::Push(
-            make_menu_scene, menu_logic,
-            RenderBehavior::Superpose,
-            LogicBehavior::Blocking,
-            Some(render_gui)
-        ));
+        game_state.send_event(GameEvent::Push("menu state".to_string()));
     }
     game_state.scene.camera.relative_move(camera_pos);
     game_state.scene.camera.rotation(camera_rot.clone());
@@ -174,40 +157,45 @@ fn menu_logic(game_state: &mut GameState,
 
 fn render_gui(ui: &mut Ui, proxy: &EventLoopProxy<GameEvent>)
 {
-    Window::new(im_str!("Hello world"))
+    Window::new(im_str!("Pause Menu"))
         .size([300.0, 110.0], Condition::FirstUseEver)
+        .movable(false)
+        .no_decoration()
         .build(&ui, || {
             if ui.button(im_str!("QUIT"), [60.0, 36.0])
             {
                 proxy.send_event(GameEvent::QuitRequested);
             };
-            ui.text(im_str!("Hello world!"));
-            ui.text(im_str!("こんにちは世界！"));
-            ui.text(im_str!("This...is...imgui-rs!"));
-            ui.separator();
-            let mouse_pos = ui.io().mouse_pos;
-            ui.text(format!(
-                "Mouse Position: ({:.1},{:.1})",
-                mouse_pos[0], mouse_pos[1]
-            ));
+
+            ui.text(im_str!("Useless text"));
         });
 
 }
 
+/*
+Un exemple simple avec un état de jeu et un état pour le menu.
+Le menu bloque le jeu quand il est en place, mais le jeu s'affiche toujours même
+si le menu est par-dessus.
+Le jeu n'as pas de GUI, le menu si.
 
-
+*/
 fn main() -> Result<(), EngineError>
 {
     
-    let mut game = Game::new(render_gui);
-    game.push_state(make_main_scene, game_logic,
-                    RenderBehavior::Superpose,
-                    LogicBehavior::Superpose,
-                    None);
-    game.push_state(make_menu_scene, menu_logic,
-                    RenderBehavior::Superpose,
-                    LogicBehavior::Blocking,
-                    Some(render_gui));
+    let mut game = Game::new();
+    game.register_state("main state",
+                        make_main_scene,
+                        game_logic,
+                        None,
+                        RenderBehavior::Superpose,
+                        LogicBehavior::Superpose);
+    game.register_state("menu state",
+                        make_menu_scene,
+                        menu_logic,
+                        Some(render_gui),
+                        RenderBehavior::Superpose,
+                        LogicBehavior::Blocking);
+    game.push_state("main state")?;
     game.run()
 
 }
