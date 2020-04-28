@@ -118,10 +118,20 @@ impl Game
                       name: &str
     ) -> Result<(), base::EngineError>
     {
-        let proto = self.states.get_mut().get_proto(name.to_string())?;
-        let state = GameState::from_proto(self, &proto)?;
-        self.states.get_mut()
-            .push(state);
+        if let Some(state) = self.states.get_mut()
+            .loaded.remove(&name.to_string())
+        {
+            self.states.get_mut()
+                .push(state);
+
+        }
+        else
+        {
+            let proto = self.states.get_mut().get_proto(name.to_string())?;
+            let state = GameState::from_proto(self, &proto)?;
+            self.states.get_mut()
+                .push(state);
+        }
         Ok(())
     }
 
