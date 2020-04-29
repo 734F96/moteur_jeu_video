@@ -35,6 +35,7 @@ impl DevicesState
         {
             self.keyboard_continuous.insert(key);
         }
+//	self.mouse_move = (0., 0.);
 //        self.keyboard_pressed.clear();
     }
     pub fn key_continuous(&self, key: Key) -> bool

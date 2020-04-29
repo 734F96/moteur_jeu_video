@@ -112,11 +112,21 @@ impl Game
         
     }
 
-    /// useless for now
-        /// useless for now
+    pub fn load_state(&mut self,
+		      name: &str) -> Result<(), base::EngineError>
+    {
+        let proto = self.states.get_mut()
+	    .get_proto(name.to_string())?;
+        let state = GameState::from_proto(self, &proto)?;
+        self.states.get_mut()
+            .loaded.insert(name.to_string(), state);
+	Ok(())
+	
+    }
+    
+
     pub fn push_state(&mut self,
-                      name: &str
-    ) -> Result<(), base::EngineError>
+                      name: &str) -> Result<(), base::EngineError>
     {
         if let Some(state) = self.states.get_mut()
             .loaded.remove(&name.to_string())
@@ -127,10 +137,8 @@ impl Game
         }
         else
         {
-            let proto = self.states.get_mut().get_proto(name.to_string())?;
-            let state = GameState::from_proto(self, &proto)?;
-            self.states.get_mut()
-                .push(state);
+	    self.load_state(name)?;
+	    self.push_state(name)?;
         }
         Ok(())
     }

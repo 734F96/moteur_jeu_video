@@ -22,3 +22,6 @@ image = "*"
 imgui-sys = "*"
 imgui-glium-renderer = "*"
 imgui-winit-support = "*"
+
+
+specs="*"
