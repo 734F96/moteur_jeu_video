@@ -5,7 +5,7 @@ use moteur_jeu_video::{
     GameState,
     RenderBehavior,
     LogicBehavior,
-    GameEvent
+    GameEvent,
 };
 use ::base::EngineError;
 use graphics::{
@@ -15,7 +15,8 @@ use graphics::{
     Similarity,
     get_ressources_path,
     Scene,
-    Params
+    Params,
+    Light
 };
 use events_handling::{Key, DevicesState};
 use imgui::{Window, im_str, Condition, Ui};
@@ -30,49 +31,22 @@ fn make_main_scene(
     let base = &game.base;
     let ressources_path = get_ressources_path();
 
-    holder.load_wavefront(disp, "textured_cube.obj", &ressources_path)?;
-    holder.load_wavefront(disp, "reds.obj", &ressources_path)?;
     holder.load_wavefront(disp, "transparent_sphere.obj", &ressources_path)?;
-    holder.load_wavefront(disp, "teto.obj", &ressources_path)?;
-    holder.load_wavefront(disp, "terrain.obj", &ressources_path)?;
-    holder.load_wavefront(disp, "Test.obj", &ressources_path)?;
 
     let sphere = holder.get_object("transparent_sphere", "Sphere").unwrap();
-    let _teto = holder
-        .get_object("teto", "Lat式改変テト_mesh_Lat式改変テト")
-        .unwrap();
-    let red = holder.get_object("reds", "Cube_translaté_Cube.002").unwrap();
-    let zeldo = holder.get_object("textured_cube", "Cube.001").unwrap();
-    let map_elements = holder.get_whole_content("terrain").unwrap();
-    // le buffer d'instanciation pour la map
-    let map_position = vec![
-        Similarity
-        {
-            world_transformation: new_transformation((0., 0., 0.), (0., 0., 0.), 1.)
-        }
-    ];
-
-//    let maison = holder.get_whole_content("Test").unwrap();
-    let maison = holder.get_object("Test", "SM_Bld_Saloon_01_27_SM_Bld_Saloon_01").unwrap();
-
-    holder.add_parameters(Params::new().polygon_line(), "wireframe");
-
-    let red = holder.obj_parameters(red, "wireframe")?;
-    
-    holder.add_tile(&disp, &base, "edgytet.png")?;
     
     
 
     let positions_balles = vec![
-        (0.1, 0.01, 1.2),
-        (0.8, 0.04, 0.0),
-        (0., 0., 0.2),
-        (0.1, 0.01, 1.2),
+        (-0.1, -0.01, 1.2),
+        (-0.8, -0.04, 0.0),
+        (-0., -0., 0.2),
+        (0.1, -0.01, -1.2),
     ];
 
     
     // le buffer d'instanciation pour les cubes
-    let instances = (0..4).map(|i| Similarity {
+    let instances = (0..positions_balles.len()).map(|i| Similarity {
             world_transformation: new_transformation(
                 positions_balles[i], 
                 (rand::random(), rand::random(), rand::random()),
@@ -80,11 +54,27 @@ fn make_main_scene(
         }).collect::<Vec<_>>();
 
     
-    let mut scene = Scene::new();
+    let mut scene = Scene::new(&disp);
 
     scene.add(vec![sphere], instances);
-    scene.add(vec![maison], map_position);
 
+    let light = Light::Point
+        (
+            1.0,
+            [1.0, 0.0, 1.0],
+            [0.8, 5.0, 4.0],
+    );
+    
+    scene.add_light(light);
+    let light = Light::Point
+        (
+            1.0,
+            [0.0, 0.0, -1.0],
+            [0.0, 1.0, 1.0],
+    );
+    scene.add_light(light);
+
+    
     Ok(scene)
 }
 
@@ -105,10 +95,10 @@ fn make_menu_scene(
         world_transformation: new_transformation((0., 0., 0.), (0., 0., 0.), 1.)
     }];
     
-    let mut scene = Scene::new();
+    let mut scene = Scene::new(&disp);
 
     scene.add(vec![tile], tile_position);
-
+    
     Ok(scene)
 }
 
@@ -135,7 +125,7 @@ fn game_logic(game_state: &mut GameState,
     let mut camera_pos = Vector3::new(0., 0., 0.);
     let mut camera_rot = Vector3::new(0., 0., 0.);
     let sensibility = 0.005;
-    let speed = 0.8; // parce que pourquoi pas.
+    let speed = 0.08; // parce que pourquoi pas.
 
     let (mouse_x, mouse_y) = devices.mouse_motion();
     camera_rot[1] -= (mouse_x as f32) * sensibility;
@@ -158,28 +148,6 @@ fn game_logic(game_state: &mut GameState,
     }
     game_state.scene.camera.relative_move(camera_pos);
     game_state.scene.camera.rotation(camera_rot.clone());
-
-    ///////////////////
-    // #################################################################################
-    let mut physics = game_state.physics.as_mut().unwrap();
-    let mut i = 0;
-    physics.run();
-    for object in game_state.scene.objects.iter_mut() {
-        for similarity in object.1.iter_mut() {
-            let homogenous = physics
-                .colliders
-                .get(physics.col_tab[i])
-                .unwrap()
-                .position()
-                .to_homogeneous();
-            let (_, _, scale) = similarity.deconstruct();
-            similarity.world_transformation = *homogenous.as_ref();
-            let (tra, rot, _) = similarity.deconstruct();
-            *similarity = Similarity::new(tra, rot, scale);
-            i += 1;
-        }
-    }
-    // #################################################################################
 
 
 
@@ -227,7 +195,7 @@ fn main() -> Result<(), EngineError>
     let mut game = Game::new();
     game.register_state("main state",
                         make_main_scene,
-                        true,
+                        false,
                         game_logic,
                         None,
                         RenderBehavior::Superpose,

@@ -149,7 +149,7 @@ impl Similarity
 
 
 /// creates a new vertexbuffer of world positions
-pub fn new_vertexbuffer(disp: &Display, positions: &Vec<Similarity>) -> VertexBuffer<Similarity>
+pub fn new_vertexbuffer<T: Copy + glium::Vertex>(disp: &Display, positions: &Vec<T>) -> VertexBuffer<T>
 {
     VertexBuffer::dynamic(
         &disp.display,

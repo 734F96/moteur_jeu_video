@@ -1,7 +1,7 @@
-use glium::{Surface, uniform};
+use glium::{Surface, uniform, uniforms::UniformBuffer};
 
 use super::{Graphical, Params, Camera};
-use crate::ressource_handling::{Object, Material};
+use crate::ressource_handling::{Object, Material, Lights, N_MAX_LIGHTS};
 use crate::misc::Similarity;
 
 
@@ -33,7 +33,8 @@ impl Frame {
         gr: &Graphical,
         obj: &Object,
         per_instance: &glium::VertexBuffer<Similarity>, // position
-        camera: &Camera
+        camera: &Camera,
+        lights: &Lights
     ) {
         obj.data
             .iter()
@@ -46,7 +47,8 @@ impl Frame {
                           gr.program.get(*program)
                               .unwrap(),
                           &obj.params,
-                          camera
+                          camera,
+                          lights
                       )
             );
     }
@@ -59,7 +61,8 @@ impl Frame {
         material: &Material,
 	program: &glium::Program,
         params: &Params,
-        camera: &Camera
+        camera: &Camera,
+        lights: &Lights
     ) {
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
@@ -89,7 +92,14 @@ impl Frame {
 
                             specular_color: *specular_color,
                             specular_exponent: *specular_exponent,
-                            opacity: *opacity
+                            opacity: *opacity,
+                            
+
+                            lights_type: &lights.light_type,
+                            lights_intensity: &lights.intensity,
+                            lights_pos: &lights.position,
+                            lights_dir: &lights.direction,
+                            lights_col: &lights.colour,
 
                         },
                         &params.parameters,
@@ -117,8 +127,15 @@ impl Frame {
                                    specular: *specular_color,
                                    specular_exponent: *specular_exponent,
                                    emission: *emission_color,
-                                   opacity: *opacity
-                        },
+                                   opacity: *opacity,
+
+
+                                   lights_type: &lights.light_type,
+                                   lights_intensity: &lights.intensity,
+                                   lights_pos: &lights.position,
+                                   lights_dir: &lights.direction,
+                                   lights_col: &lights.colour,
+},
                         &params.parameters,
                     )
                     .unwrap();
