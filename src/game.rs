@@ -21,7 +21,7 @@ use imgui_glium_renderer::Renderer;
 use imgui::{Context, Ui};
 
 
-
+use specs::{Dispatcher, World};
 
 
 
@@ -104,6 +104,7 @@ impl Game
         frame.clear();
         self.states.borrow_mut()
             .render(&self.graphic_engine,
+		    &self.ressources,
                     &mut self.gui_renderer,
                     &mut frame,
                     &mut self.gui_context);
@@ -152,6 +153,7 @@ impl Game
         run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
         render_behavior: RenderBehavior,
         logic_behavior: LogicBehavior,
+	init: fn() -> (World, Dispatcher<'static, 'static>)
 
     )
     {
@@ -163,7 +165,8 @@ impl Game
                 run_gui,
                 run_logic,
                 render_behavior,
-                logic_behavior)
+                logic_behavior,
+		init)
     }
     
     fn pop_state(&self, n_to_pop: usize)

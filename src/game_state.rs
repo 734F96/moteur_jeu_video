@@ -1,5 +1,5 @@
 use super::{GameEvent, Game};
-use graphics::{Scene, Graphical, Frame};
+use graphics::{Scene, Graphical, Frame, RessourcesHolder};
 use events_handling::DevicesState;
 use graphics::glium::glutin::event_loop::EventLoopProxy;
 
@@ -21,6 +21,8 @@ use physics::nphysics3d::{
 use physics::make_objects;
 use graphics::nalgebra::Vector3;
 
+use specs::{World, Dispatcher, DispatcherBuilder, WorldExt};
+
 
 pub struct GameState
 {
@@ -31,21 +33,28 @@ pub struct GameState
     logic: fn(&mut GameState, &DevicesState),
     render_behavior: RenderBehavior,
     logic_behavior: LogicBehavior,
-    proxy: EventLoopProxy<GameEvent>
+    proxy: EventLoopProxy<GameEvent>,
+//    world_init:
+
+    pub world: World,
+    dispatcher: Dispatcher<'static, 'static>
 }
 
 
 
 impl GameState
 {
-    pub fn new(name: String,
+    
+    fn new(name: String,
                scene: Scene,
                with_physics: bool,
                logic: fn(&mut GameState, &DevicesState),
                render_behavior: RenderBehavior,
                logic_behavior: LogicBehavior,
                gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
-               proxy: EventLoopProxy<GameEvent>) -> Self
+               proxy: EventLoopProxy<GameEvent>,
+	       init: fn() -> (World, Dispatcher<'static, 'static>)
+    ) -> Self
     {
         let physics = if with_physics
         {
@@ -76,6 +85,8 @@ impl GameState
         {
             None
         };
+	
+	let (world, dispatcher) = init();
         Self
         {
             name: name,
@@ -85,7 +96,9 @@ impl GameState
             gui: gui,
             logic_behavior: logic_behavior,
             proxy: proxy,
-            physics: physics
+            physics: physics,
+	    world: world,
+	    dispatcher: dispatcher
         }
     }
     
@@ -100,7 +113,8 @@ impl GameState
                      proto.render_behavior,
                      proto.logic_behavior,
                      proto.run_gui,
-                     game.event_loop_proxy.clone()))
+                     game.event_loop_proxy.clone(),
+		     proto.init))
     }
 
     pub fn send_event(&self, user_event: GameEvent)
@@ -176,6 +190,7 @@ impl GameStateStack
         run_logic: fn(&mut GameState, &DevicesState),
         render_behavior: RenderBehavior,
         logic_behavior: LogicBehavior,
+	init: fn() -> (World, Dispatcher<'static, 'static>)
     
     )
     {
@@ -190,7 +205,8 @@ impl GameStateStack
                 run_gui: run_gui,
                 run_logic: run_logic,
                 render_behavior: render_behavior,
-                logic_behavior: logic_behavior
+                logic_behavior: logic_behavior,
+		init: init
             });
     }
 /*
@@ -245,6 +261,7 @@ impl GameStateStack
     
     pub fn render(&mut self,
                   gr: &Graphical,
+		  ressources: &RessourcesHolder,
                   gui_renderer: &mut Renderer,
                   frame: &mut Frame,
                   gui_context: &mut Context)
@@ -259,7 +276,7 @@ impl GameStateStack
         for state in self.iter_mut().skip(to_skip)
             .filter(|state| state.render_behavior != RenderBehavior::NoRender)
         {
-            state.scene.render(gr, frame);
+            state.scene.render(gr, ressources, frame);
 
         // gui
             if let Some(gui) = state.gui
@@ -289,6 +306,7 @@ impl GameStateStack
         for state in self.iter_mut().skip(to_skip)
         {
             (state.logic)(state, devices);
+	    state.dispatcher.dispatch(&mut state.world);
         }
     }
 }
@@ -303,5 +321,7 @@ pub struct ProtoState
     run_logic: fn(&mut GameState, &DevicesState),
     render_behavior: RenderBehavior,
     logic_behavior: LogicBehavior,
+
+    init: fn() -> (World, Dispatcher<'static, 'static>)
    
 }
