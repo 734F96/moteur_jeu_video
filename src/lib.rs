@@ -1,10 +1,12 @@
 mod game;
 mod game_state;
 mod game_event;
+mod components;
 
 pub use game::*;
 pub use game_state::*;
 pub use game_event::*;
+pub use components::*;
 
 /// The elements needed to create a game
 pub mod prelude

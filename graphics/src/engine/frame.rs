@@ -1,7 +1,7 @@
-use glium::{Surface, uniform, uniforms::UniformBuffer};
+use glium::{Surface, uniform};
 
 use super::{Graphical, Params, Camera};
-use crate::ressource_handling::{Object, Material, Lights, N_MAX_LIGHTS};
+use crate::ressource_handling::{Object, Material, Lights};
 use crate::misc::Similarity;
 
 

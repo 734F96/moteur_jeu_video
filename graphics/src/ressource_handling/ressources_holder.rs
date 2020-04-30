@@ -31,9 +31,11 @@ impl<T> Clone for Handle<T>
 	}
     }
 }
-
 impl<T> Copy for Handle<T>{}
 
+// we have to precise it is safe
+unsafe impl<T> Sync for Handle<T>{}
+unsafe impl<T> Send for Handle<T>{}
 
 #[derive(Debug)]
 pub struct Register<T>
@@ -222,11 +224,12 @@ impl RessourcesHolder {
     /// Returns an Object using the given drawing parameters.
     pub fn obj_parameters(&mut self, obj: Object, params_name: &str) -> Result<Handle<Object>, EngineError>
     {
-        match self.params.get(params_name)
+        let obj = match self.params.get(params_name)
         {
             None => EngineError::new("unknown parameter"),
-            Some(params) => Ok(self.store_object(Object::new(obj.data, params.clone())))
-        }
+            Some(params) => Ok(Object::new(obj.data, params.clone()))
+        }?;
+	Ok(self.store_object(obj))
     }
     
     

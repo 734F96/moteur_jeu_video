@@ -1,7 +1,11 @@
-use super::{GameEvent, Game};
+use super::{GameEvent, Game, Model, Spatial};
 use graphics::{Scene, Graphical, Frame, RessourcesHolder};
 use events_handling::DevicesState;
-use graphics::glium::glutin::event_loop::EventLoopProxy;
+use graphics::
+{
+    glium::glutin::event_loop::EventLoopProxy,
+    Similarity
+};
 
 use imgui::{Ui, Context};
 use imgui_glium_renderer::Renderer;
@@ -15,13 +19,13 @@ use std::collections::HashMap;
 use physics::nphysics3d::{
     force_generator::DefaultForceGeneratorSet,
     joint::DefaultJointConstraintSet,
-    world::{DefaultMechanicalWorld, DefaultGeometricalWorld},
-            object::{ActivationStatus, BodyStatus, DefaultBodySet, DefaultColliderSet}            
+    world::{DefaultMechanicalWorld, DefaultGeometricalWorld}
+
 };
 use physics::make_objects;
 use graphics::nalgebra::Vector3;
 
-use specs::{World, Dispatcher, DispatcherBuilder, WorldExt};
+use specs::{World, Dispatcher, WorldExt, join::Join};
 
 
 pub struct GameState
@@ -34,7 +38,6 @@ pub struct GameState
     render_behavior: RenderBehavior,
     logic_behavior: LogicBehavior,
     proxy: EventLoopProxy<GameEvent>,
-//    world_init:
 
     pub world: World,
     dispatcher: Dispatcher<'static, 'static>
@@ -53,7 +56,8 @@ impl GameState
                logic_behavior: LogicBehavior,
                gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
                proxy: EventLoopProxy<GameEvent>,
-	       init: fn() -> (World, Dispatcher<'static, 'static>)
+	   init: fn(&mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>),
+	   ressources: &mut RessourcesHolder
     ) -> Self
     {
         let physics = if with_physics
@@ -86,7 +90,7 @@ impl GameState
             None
         };
 	
-	let (world, dispatcher) = init();
+	let (world, dispatcher) = init(ressources);
         Self
         {
             name: name,
@@ -114,7 +118,8 @@ impl GameState
                      proto.logic_behavior,
                      proto.run_gui,
                      game.event_loop_proxy.clone(),
-		     proto.init))
+		     proto.init,
+		     &mut game.ressources))
     }
 
     pub fn send_event(&self, user_event: GameEvent)
@@ -125,6 +130,22 @@ impl GameState
             _ => ()
         }
     }
+
+    /// probably temporary function (will be in use as long as a Scene is used for render)
+    pub fn update_scene(&mut self)
+    {
+	// pas d'instantiation pour l'instant (soon)
+	let models_storage = self.world.read_storage::<Model>();
+	let spatial_storage = self.world.read_storage::<Spatial>();
+	let data: Vec<_> = (&models_storage, &spatial_storage).join()
+	    .map(|(Model(obj_handle), Spatial{pos, rot, scale})|
+		 {
+		     (vec![*obj_handle], vec![Similarity::new(*pos, *rot, *scale)])
+		 }).collect();
+	self.scene.objects = data;
+	
+    }
+    
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -190,7 +211,7 @@ impl GameStateStack
         run_logic: fn(&mut GameState, &DevicesState),
         render_behavior: RenderBehavior,
         logic_behavior: LogicBehavior,
-	init: fn() -> (World, Dispatcher<'static, 'static>)
+	init: fn(&mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
     
     )
     {
@@ -276,6 +297,7 @@ impl GameStateStack
         for state in self.iter_mut().skip(to_skip)
             .filter(|state| state.render_behavior != RenderBehavior::NoRender)
         {
+	    state.update_scene();
             state.scene.render(gr, ressources, frame);
 
         // gui
@@ -322,6 +344,6 @@ pub struct ProtoState
     render_behavior: RenderBehavior,
     logic_behavior: LogicBehavior,
 
-    init: fn() -> (World, Dispatcher<'static, 'static>)
+    init: fn(&mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
    
 }

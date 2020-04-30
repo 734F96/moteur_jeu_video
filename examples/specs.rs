@@ -1,6 +1,27 @@
 extern crate moteur_jeu_video;
 
 use moteur_jeu_video::prelude::*;
+use specs::
+{
+    World,
+    WorldExt,
+    DispatcherBuilder,
+    Dispatcher,
+    Builder,
+};
+
+use moteur_jeu_video::
+{
+    Spatial,
+    Model,
+};
+
+use graphics::RessourcesHolder;
+
+
+
+
+
 
 fn make_main_scene(
     game: &mut Game
@@ -8,35 +29,12 @@ fn make_main_scene(
 {
     let disp = &game.graphic_engine.display;
     let holder = &mut game.ressources;
-    let base = &game.base;
     let ressources_path = get_ressources_path();
 
     holder.load_wavefront(disp, "transparent_sphere.obj", &ressources_path)?;
-
-    let sphere = holder.get_object("transparent_sphere", "Sphere").unwrap();
-    let map_position = vec![
-        Similarity
-        {
-            world_transformation: new_transformation((0., 0., 0.), (0., 0., 0.), 1.)
-        }
-    ];
-    
-    
-
- 
-    
-    // le buffer d'instanciation pour les cubes
-    let instances = (0..40).map(|i| Similarity {
-            world_transformation: new_transformation(
-                (rand::random(), rand::random(), rand::random()),
-                (rand::random(), rand::random(), rand::random()),
-                0.001)
-        }).collect::<Vec<_>>();
-
     
     let mut scene = Scene::new(&disp);
 
-    scene.add(vec![sphere], instances);
 
     for _ in 0..10
     {
@@ -179,6 +177,33 @@ fn render_gui(ui: &mut Ui, proxy: &EventLoopProxy<GameEvent>)
 
 }
 
+fn build_world(ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
+{
+    let mut world = World::new();
+    world.register::<Spatial>();
+    world.register::<Model>();
+
+    let sphere = Model(ressources.get_object("transparent_sphere", "Sphere").unwrap());
+    for _ in 0..40
+    {
+	let spatial =Spatial
+	{
+            pos: vec3(rand::random(), rand::random(), rand::random()),
+            rot: vec3(rand::random(), rand::random(), rand::random()),
+            scale: 0.001
+	};
+	world.create_entity()
+	    .with(spatial)
+	    .with(sphere)
+	    .build();
+    }
+
+    let dispatcher = DispatcherBuilder::new()
+	.build();
+    
+    (world, dispatcher)
+}
+
 /*
 Un exemple simple avec un état de jeu et un état pour le menu.
 Le menu bloque le jeu quand il est en place, mais le jeu s'affiche toujours même
@@ -196,17 +221,22 @@ fn main() -> Result<(), EngineError>
                         game_logic,
                         None,
                         RenderBehavior::Superpose,
-                        LogicBehavior::Superpose);
+                        LogicBehavior::Superpose,
+			build_world
+    );
     game.register_state("menu state",
                         make_menu_scene,
                         false,
                         menu_logic,
                         Some(render_gui),
                         RenderBehavior::Superpose,
-                        LogicBehavior::Blocking);
+                        LogicBehavior::Blocking,
+			build_world
+
+    );
     game.push_state("main state")?;
     game.load_state("menu state")?;
-    println!("{:?}", game.ressources);
+//    println!("{:?}", game.ressources);
     
     game.run()
 

@@ -1,8 +1,7 @@
-use super::{Object, Light, Lights, N_MAX_LIGHTS, Handle, RessourcesHolder};
+use super::{Object, Light, Lights, Handle, RessourcesHolder};
 use crate::engine::{Graphical, Frame, Camera, Display};
 use crate::misc::{Similarity, new_vertexbuffer};
 
-use glium::uniforms::UniformBuffer;
 
 /**
 A scene contains pointers to existing ressources and datas to place them in the space.

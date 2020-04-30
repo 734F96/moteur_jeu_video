@@ -1,4 +1,3 @@
-use glium::implement_uniform_block;
 use glium::uniforms::UniformBuffer;
 pub const N_MAX_LIGHTS: usize = 128;
 
@@ -62,7 +61,6 @@ impl Lights
     /// for debug purpose
     pub fn print(&mut self)
     {
-        let n = self.n as usize;
         println!("LIGHTS:");
         println!("n = {}", self.n);
         print!("TYP: ");
