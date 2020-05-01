@@ -25,7 +25,17 @@ use physics::nphysics3d::{
 use physics::make_objects;
 use graphics::nalgebra::Vector3;
 
-use specs::{World, Dispatcher, WorldExt, join::Join};
+use rayon::iter::ParallelIterator;
+use rayon::iter::IntoParallelIterator;
+
+
+use specs::
+{World,
+ Dispatcher,
+ WorldExt,
+ join::Join,
+ join::ParJoin
+};
 
 
 pub struct GameState
@@ -137,11 +147,49 @@ impl GameState
 	// pas d'instantiation pour l'instant (soon)
 	let models_storage = self.world.read_storage::<Model>();
 	let spatial_storage = self.world.read_storage::<Spatial>();
-	let data: Vec<_> = (&models_storage, &spatial_storage).join()
-	    .map(|(Model(obj_handle), Spatial{pos, rot, scale})|
-		 {
-		     (vec![*obj_handle], vec![Similarity::new(*pos, *rot, *scale)])
-		 }).collect();
+	let instances = (&models_storage, &spatial_storage).par_join()
+	    .fold(|| HashMap::new(), |mut instances, (Model(obj_handle), Spatial{pos, rot, scale})|
+		  {
+		      let similarity = Similarity::new(*pos, *rot, *scale);
+		      match instances.get_mut(obj_handle)
+		      {
+			  None =>
+			  {
+			      instances.insert(obj_handle, vec![similarity]);
+			  },
+			  Some(v) =>
+			  {
+			      v.push(similarity);
+			  }
+		      };
+		      instances
+		  })
+	    .reduce(
+		|| HashMap::new(),
+		|mut total, part|
+		{
+		    part.into_iter()
+			.for_each(
+			    |(obj_handle, mut vect)|
+			    {
+				match total.get_mut(obj_handle)
+				{
+				    None =>
+				    {
+					total.insert(obj_handle, vect);
+				    },
+				    Some(v) =>
+				    {
+					v.append(&mut vect);
+				    }
+				};
+			    });
+			total
+		}
+	    );
+	let data: Vec<_> = instances.into_par_iter()
+	    .map(|(model, inst)| (vec![*model], inst))
+	    .collect();
 	self.scene.objects = data;
 	
     }

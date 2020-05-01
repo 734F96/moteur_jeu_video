@@ -14,7 +14,7 @@ pub struct Spatial
     pub scale: f32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Model(pub Handle<Object>);
 
 impl Component for Spatial

@@ -22,6 +22,18 @@ impl<T> PartialEq for Handle<T>
 	self.index == other.index
     }
 }
+
+impl<T> Eq for Handle<T>{}
+
+use std::hash::{Hash, Hasher};
+impl<T> Hash for Handle<T>
+{
+    fn hash<H: Hasher>(&self, hasher: &mut H)
+    {
+	self.index.hash(hasher);
+    }
+}
+
 impl<T> Clone for Handle<T>
 {
     fn clone(&self) -> Self
