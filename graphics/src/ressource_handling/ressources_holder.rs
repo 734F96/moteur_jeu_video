@@ -211,13 +211,13 @@ impl RessourcesHolder {
         disp: &Display,
         filename: &str,
         ressources_path: &Path,
-    ) -> Result<(), &'static str> {
+    ) -> Result<(), EngineError> {
         self.wavefronts
             .load_wavefront(disp, filename, ressources_path)
     }
 
     /// Unloads a wavefront file.
-    pub fn unload(&mut self, filename: &str) -> Result<(), &'static str> {
+    pub fn unload(&mut self, filename: &str) -> Result<(), EngineError> {
         self.wavefronts.unload(filename)
     }
 }

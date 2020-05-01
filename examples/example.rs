@@ -40,7 +40,7 @@ fn make_main_scene(
     let ressources_path = get_ressources_path();
 
     holder.load_wavefront(disp, "transparent_sphere.obj", &ressources_path)?;
-    //holder.load_wavefront(disp, "maison.obj", &ressources_path)?;
+
     holder.load_wavefront(disp, "saloon.obj", &ressources_path)?;
     holder.load_wavefront(disp, "porte_chambre.obj", &ressources_path)?;
     holder.load_wavefront(disp, "porte_entree.obj", &ressources_path)?;
@@ -50,6 +50,7 @@ fn make_main_scene(
     holder.load_wavefront(disp, "tabourets.obj", &ressources_path)?;
     holder.load_wavefront(disp, "verres.obj", &ressources_path)?;
     holder.load_wavefront(disp, "bouteille.obj", &ressources_path)?;
+    holder.load_wavefront(disp, "teto.obj", &ressources_path)?;
 
     
 
@@ -427,7 +428,7 @@ fn main() -> Result<(), EngineError>
     game.load_state("menu state")?;
 //    println!("{:?}", game.ressources);
     
-    game.run(30)
+    game.run(20)
 
 }
 
