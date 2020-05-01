@@ -27,3 +27,14 @@ impl Component for Model
     type Storage = DenseVecStorage<Self>;
 }
 
+
+use graphics::Light;
+
+
+#[derive(Debug, Clone, Copy)]
+pub struct Lighting(pub Light);
+
+impl Component for Lighting
+{
+    type Storage = DenseVecStorage<Self>;
+}

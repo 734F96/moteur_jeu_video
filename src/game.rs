@@ -111,7 +111,6 @@ impl Game
                     &mut self.gui_context);
         
         frame.swap();
-        
     }
 
     pub fn load_state(&mut self,
@@ -253,14 +252,15 @@ impl Game
     }
 
     /// Initialize and runs the game
-    pub fn run(mut self) -> Result<(), base::EngineError>
+    pub fn run(mut self, fps: u64) -> Result<(), base::EngineError>
     {
 
         let mut now = std::time::Instant::now();
         let mut render_date = std::time::Instant::now();
-        // 30 fps
-        let delay = std::time::Duration::from_millis(1000/15);
-        
+
+	let delay = std::time::Duration::from_millis(1000/fps);
+
+	
         self.event_loop.consume()
             .run(move |event, _, control_flow|
                  {

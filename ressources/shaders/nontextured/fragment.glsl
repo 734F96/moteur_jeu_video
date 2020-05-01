@@ -14,6 +14,8 @@ uniform vec3 emmission;
 uniform vec3 opacity;
 
 
+uniform uint n_lights;
+
 layout(std140) uniform lights_types
 {
     uint l_type[128];
@@ -43,7 +45,7 @@ void main() {
 
     vec3 light_dir = vec3(0.);
     
-    for (int i = 0; i < 100; ++i)
+    for (uint i = 0u; i < n_lights; ++i)
     {
 	
 	if (l_type[i] == 0u)
@@ -59,17 +61,13 @@ void main() {
 	vec3 camera_dir = normalize(-v_position);
 
 	vec3 half_direction = normalize(light_dir + camera_dir);
-	float specular = pow(
+	float specular_coef = pow(
 	    max(dot(half_direction, norm),
 		0.0),
-	    16.0);
+	    specular_exponent);
+	
 
-/*
-	  vec3 half_direction = normalize(normalize(u_light) + camera_dir);
-	  float specular = pow(max(dot(half_direction, normalize(v_normal)), 0.0), 16.0);
-	*/
-
-	vec3 color = diffuse*diffuse_coef+specular*vec3(1.);
+	vec3 color = diffuse*diffuse_coef+specular*specular_coef;
 
 	    
 	f_color += vec4(color, 1.) ;

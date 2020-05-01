@@ -8,15 +8,23 @@ use specs::
     DispatcherBuilder,
     Dispatcher,
     Builder,
+    Read,
+    Write,
+    System
 };
 
 use moteur_jeu_video::
 {
     Spatial,
     Model,
+    Lighting
 };
 
-use graphics::RessourcesHolder;
+use graphics::
+{
+    Camera,
+    RessourcesHolder
+};
 
 
 
@@ -33,21 +41,13 @@ fn make_main_scene(
 
     holder.load_wavefront(disp, "transparent_sphere.obj", &ressources_path)?;
     holder.load_wavefront(disp, "maison.obj", &ressources_path)?;
+    holder.load_wavefront(disp, "teto.obj", &ressources_path)?;
     
+
+    holder.add_parameters(Params::new().with_transparency(true), "Sphere");
+
     let mut scene = Scene::new(&disp);
 
-
-    for _ in 0..10
-    {
-	scene.add_light(
-	    Light::Point(
-	    
-		1.,
-		[rand::random::<f32>(); 3],
-		[rand::random::<f32>(); 3]
-	    )
-	);
-    }    
 
     Ok(scene)
 }
@@ -69,32 +69,9 @@ fn game_logic(game_state: &mut GameState,
               devices: &DevicesState)
 {
 
-    let mut camera_pos = Vector3::new(0., 0., 0.);
-    let mut camera_rot = Vector3::new(0., 0., 0.);
-    let sensibility = 0.005;
-    let speed = 0.8; // parce que pourquoi pas.
-
-    let (mouse_x, mouse_y) = devices.mouse_motion();
-    camera_rot[1] -= (mouse_x as f32) * sensibility;
-    camera_rot[0] -= (mouse_y as f32) * sensibility;
-
-    if devices.key_continuous(Key::Q) {
-        camera_pos[2] = camera_pos[2] - speed;
-    }
-    if devices.key_continuous(Key::D) {
-        camera_pos[2] = camera_pos[2] + speed;
-    }
-    if devices.key_continuous(Key::Z) {
-        camera_pos[0] = camera_pos[0] + speed;
-    }
-    if devices.key_continuous(Key::S) {
-        camera_pos[0] = camera_pos[0] - speed;
-    }
     if devices.key_pressed(Key::Escape) {
         game_state.send_event(GameEvent::Push("menu state".to_string()));
     }
-    game_state.scene.camera.relative_move(camera_pos);
-    game_state.scene.camera.rotation(camera_rot.clone());
 /*
     ///////////////////
     // #################################################################################
@@ -156,9 +133,13 @@ fn init_game(ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, '
     let mut world = World::new();
     world.register::<Spatial>();
     world.register::<Model>();
+    world.register::<Lighting>();
+    world.insert(DevicesState::default());
+    world.insert(Camera::default());
 
+    
     let sphere = Model(ressources.get_object("transparent_sphere", "Sphere").unwrap());
-    for _ in 0..400
+    for _ in 0..50
     {
 	let spatial =Spatial
 	{
@@ -184,22 +165,102 @@ fn init_game(ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, '
 	.with(maison)
 	.build();
 
+
+    let teto = Model(ressources.get_object("teto", "Lat式改変テト_mesh_Lat式改変テト").unwrap());
+
+
+    for _ in 0..5
+    {
+	let radius = 10.;
+	let pos = [(rand::random::<f32>()-0.5)*radius,
+		   (rand::random::<f32>()-0.5)*radius,
+		   (rand::random::<f32>()-0.5)*radius];
+	let rot = [rand::random::<f32>(); 3];
+	let light = Light::Point
+	    (
+		1.,
+		pos,
+		rot
+	    );
+	world.create_entity()
+	    .with(Lighting(light))
+	    .with(Spatial
+		  {
+		      pos: vec3(pos[0], pos[1], pos[2]),
+		      rot: vec3(rot[0], rot[1], rot[2]),
+		      scale: 0.001
+		  })
+	    .with(teto)
+	    .build();
+    }    
+
+
+
+    
     
     let dispatcher = DispatcherBuilder::new()
+	.with(CameraSystem, "camera motion", &[])
 	.build();
     
     (world, dispatcher)
 }
+
+
+struct CameraSystem;
+
+impl<'a> System<'a> for CameraSystem
+{
+    type SystemData = (Write<'a, Camera>,
+		       Read<'a, DevicesState>);
+    fn run(&mut self, (mut camera, devices): Self::SystemData)
+    {
+
+	let sensibility = 0.003;
+	let speed = 0.08; // parce que pourquoi pas.
+
+	let (mouse_x, mouse_y) = devices.mouse_motion();
+
+	camera.rotate(
+	    (mouse_x as f32) * sensibility,
+	    (mouse_y as f32) * sensibility
+	);
+
+	
+	if devices.key_continuous(Key::Q) {
+            camera.translate_side(-speed);
+	}
+	if devices.key_continuous(Key::D) {
+            camera.translate_side(speed);
+	}
+	if devices.key_continuous(Key::Z) {
+            camera.translate_forward(speed);
+	}
+	if devices.key_continuous(Key::S) {
+            camera.translate_forward(-speed);
+	}
+	if devices.key_continuous(Key::Space) {
+	    camera.translate_y(speed);
+	}
+	if devices.key_continuous(Key::LShift) {
+	    camera.translate_y(-speed);
+	}
+    }
+}
+
+
 
 fn init_menu(ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
 {
     let mut world = World::new();
     world.register::<Spatial>();
     world.register::<Model>();
+    world.register::<Lighting>();
+    world.insert(DevicesState::default());
+    world.insert(Camera::default());
 
     let dispatcher = DispatcherBuilder::new()
 	.build();
-    
+   
     (world, dispatcher)
 }
 
@@ -237,7 +298,7 @@ fn main() -> Result<(), EngineError>
     game.load_state("menu state")?;
 //    println!("{:?}", game.ressources);
     
-    game.run()
+    game.run(30)
 
 }
 

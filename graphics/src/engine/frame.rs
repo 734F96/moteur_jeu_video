@@ -86,7 +86,7 @@ impl Frame {
                         indices,
                         program,
                         &uniform! {
-                            texture: texture,
+                            tex: texture,
                             view_matrix: camera.get_view_matrix(),
                             perspective_matrix: camera.get_perspective_matrix(),
 
@@ -95,6 +95,7 @@ impl Frame {
                             opacity: *opacity,
                             
 
+			    n_lights: lights.n,
                             lights_type: &lights.light_type,
                             lights_intensity: &lights.intensity,
                             lights_pos: &lights.position,
@@ -129,7 +130,7 @@ impl Frame {
                                    emission: *emission_color,
                                    opacity: *opacity,
 
-
+				   n_lights: lights.n,
                                    lights_type: &lights.light_type,
                                    lights_intensity: &lights.intensity,
                                    lights_pos: &lights.position,

@@ -1,10 +1,12 @@
-use super::{GameEvent, Game, Model, Spatial};
+use super::{GameEvent, Game, Model, Spatial, Lighting};
 use graphics::{Scene, Graphical, Frame, RessourcesHolder};
 use events_handling::DevicesState;
 use graphics::
 {
     glium::glutin::event_loop::EventLoopProxy,
-    Similarity
+    Similarity,
+    Lights,
+    Camera
 };
 
 use imgui::{Ui, Context};
@@ -146,6 +148,7 @@ impl GameState
     {
 	// pas d'instantiation pour l'instant (soon)
 	let models_storage = self.world.read_storage::<Model>();
+	let light_storage = self.world.read_storage::<Lighting>();
 	let spatial_storage = self.world.read_storage::<Spatial>();
 	let instances = (&models_storage, &spatial_storage).par_join()
 	    .fold(|| HashMap::new(), |mut instances, (Model(obj_handle), Spatial{pos, rot, scale})|
@@ -187,10 +190,22 @@ impl GameState
 			total
 		}
 	    );
-	let data: Vec<_> = instances.into_par_iter()
+	let objects: Vec<_> = instances.into_par_iter()
 	    .map(|(model, inst)| (vec![*model], inst))
 	    .collect();
-	self.scene.objects = data;
+	self.scene.objects = objects;
+
+
+	self.scene.lights.clear();
+
+	for Lighting(light) in (&light_storage).join()
+	{
+	    self.scene.lights.push(*light)
+	}
+
+
+	let camera = self.world.read_resource::<Camera>();
+	self.scene.camera = *camera;
 	
     }
     
@@ -342,13 +357,14 @@ impl GameStateStack
             None => 0,
             Some(pos) => pos
         };
+	
         for state in self.iter_mut().skip(to_skip)
             .filter(|state| state.render_behavior != RenderBehavior::NoRender)
         {
 	    state.update_scene();
             state.scene.render(gr, ressources, frame);
 
-        // gui
+            // gui
             if let Some(gui) = state.gui
             {
                 let mut ui = gui_context.frame();
@@ -375,6 +391,7 @@ impl GameStateStack
         };
         for state in self.iter_mut().skip(to_skip)
         {
+	    state.world.insert((*devices).clone());
             (state.logic)(state, devices);
 	    state.dispatcher.dispatch(&mut state.world);
         }
@@ -385,13 +402,15 @@ impl GameStateStack
 pub struct ProtoState
 {
     name: String,
-    with_physics: bool,
+    
     scene_builder: fn(&mut Game) -> Result<Scene, EngineError>,
     run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
     run_logic: fn(&mut GameState, &DevicesState),
-    render_behavior: RenderBehavior,
-    logic_behavior: LogicBehavior,
+    init: fn(&mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>),
 
-    init: fn(&mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
+    with_physics: bool, // can make a trait instead
+    render_behavior: RenderBehavior, // can make a trait instead
+    logic_behavior: LogicBehavior, // can make a trait instead
+
    
 }

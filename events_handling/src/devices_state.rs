@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use crate::{Key, Button};
 
+#[derive(Debug, Default, Clone)]
 pub struct DevicesState
 {
     pub keyboard_pressed: HashSet<Key>,
@@ -35,8 +36,8 @@ impl DevicesState
         {
             self.keyboard_continuous.insert(key);
         }
-//	self.mouse_move = (0., 0.);
-//        self.keyboard_pressed.clear();
+	self.mouse_move = (0., 0.);
+        self.keyboard_pressed.clear();
     }
     pub fn key_continuous(&self, key: Key) -> bool
     {

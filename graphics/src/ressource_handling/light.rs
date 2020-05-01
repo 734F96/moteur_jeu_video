@@ -1,7 +1,7 @@
 use glium::uniforms::UniformBuffer;
 pub const N_MAX_LIGHTS: usize = 128;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Light
 {
     Point(f32, [f32; 3], [f32; 3])
@@ -56,6 +56,18 @@ impl Lights
                 }
             }
         }
+    }
+
+    pub fn clear(&mut self)
+    {
+	self.n = 0;
+
+        self.light_type.invalidate();
+        self.intensity.invalidate();
+        self.position.invalidate();
+        self.colour.invalidate();
+        self.direction.invalidate();
+	
     }
     
     /// for debug purpose
