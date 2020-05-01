@@ -24,3 +24,4 @@ nalgebra-glm="0.5.0"
 
 base = { path = "../base" }
 events_handling = {path = "../events_handling"}
+sounds = { path = "../sounds" }

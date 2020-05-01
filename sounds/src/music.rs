@@ -49,5 +49,10 @@ impl OneSound
 	}
    }
 
+  pub fn set_position(&mut self,position: [f32; 3])
+  {
+    self.set_position(position)
+  }
+
 
 }

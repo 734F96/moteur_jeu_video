@@ -7,3 +7,4 @@ mod tests {
 }
 
 pub mod music;
+pub use self::music::*;

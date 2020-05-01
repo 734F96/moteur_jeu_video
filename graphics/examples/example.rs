@@ -1,7 +1,7 @@
 extern crate graphics;
 extern crate nalgebra;
 extern crate rand;
-
+	
 
 use base::{Base, EngineError};
 use events_handling::{Key, Event, DevicesState};
@@ -14,6 +14,11 @@ use nalgebra::base::*;
 use nalgebra_glm::{vec3, vec4, translation, rotation, TMat4};
 
 use glium::glutin::event_loop::{EventLoop, ControlFlow};
+
+use sounds::{OneSound};
+
+use std::thread;
+
 
 /**
 The Game structure
@@ -102,6 +107,11 @@ impl Game
     {
         self.init()?;
 
+	let thread_music= thread::spawn(move || {
+		let mut global_music = OneSound:: new("../sounds/examples/animal-crossing.wav");
+    		global_music.play_all();       
+        });
+	
         let mut now = std::time::Instant::now();
         let mut render_date = std::time::Instant::now();
         // 30 fps
@@ -203,6 +213,7 @@ fn make_scene(
     holder.load_wavefront(disp, "teto.obj", &ressources_path)?;
     holder.load_wavefront(disp, "terrain.obj", &ressources_path)?;
 
+
     let _sphere_mauve = holder.get_object("transparent_sphere", "Sphere").unwrap();
     let teto = holder
         .get_object("teto", "Lat式改変テト_mesh_Lat式改変テト")
@@ -214,7 +225,7 @@ fn make_scene(
     let map_position = vec![Similarity {
         world_transformation: new_transformation((0., 0., 0.), (0., 0., 0.), 1.)
     }];
-
+   
 
     holder.add_parameters(Params::new().polygon_line(), "wireframe");
 
@@ -228,8 +239,9 @@ fn make_scene(
         world_transformation: new_transformation((0., 0., 0.), (0., 0., 0.), 1.)
     }];
 
-    
 
+	
+    
     // le buffer d'instanciation pour les cubes
     let instances = (0..30).map(|_| Similarity {
             world_transformation: new_transformation(
@@ -243,7 +255,8 @@ fn make_scene(
 
     scene.add(vec![red, zeldo, teto], instances);
     scene.add(vec![map_elements], map_position);
-    scene.add(vec![tile], tile_position);
+
+    scene.add(vec![commode], position_commode);
 
     Ok(scene)
 }
