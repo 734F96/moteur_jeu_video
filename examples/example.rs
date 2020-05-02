@@ -10,7 +10,10 @@ use specs::
     Builder,
     Read,
     Write,
-    System
+    System,
+    ReadStorage,
+    WriteStorage,
+    Join
 };
 
 use moteur_jeu_video::
@@ -18,6 +21,7 @@ use moteur_jeu_video::
     Spatial,
     Model,
     Lighting,
+    PhysicId,
     EventSender
 };
 
@@ -27,9 +31,9 @@ use graphics::
     RessourcesHolder
 };
 
+use physics::Physics;
 
-
-
+use nalgebra::{Translation, Rotation};
 
 
 fn make_main_scene(
@@ -74,6 +78,7 @@ fn make_menu_scene(
 
     Ok(scene)
 }
+
 
 
 fn game_logic(game_state: &mut GameState,
@@ -397,6 +402,61 @@ impl<'a> System<'a> for MenuEventSystem
 
     }
 }
+
+struct PhysicSystem;
+
+impl<'a> System<'a> for PhysicSystem
+{
+    type SystemData = (Write<'a, Physics>,
+		       WriteStorage<'a, Spatial>,
+		       ReadStorage<'a, PhysicId>);
+
+    fn run(&mut self, (mut physics, mut spatial_st, physical_st): Self::SystemData)
+    {
+
+	physics.run();
+
+	for (spatial, physic_id) in (&mut spatial_st, &physical_st).join()
+	{
+	    let Spatial{mut pos, mut rot, mut scale} = spatial;
+
+	    let isometry = physics
+		.colliders
+		.get(physics.col_tab[physic_id.0])
+		.unwrap()
+		.position();
+
+	    // pas fini: je cherchais un moyen efficace d'extraire les 2 vecteurs
+	    unreachable!()
+//	    pos = isometry.translation;
+//	    rot = isometry.rotation();
+		
+	    
+	}
+
+
+	/*	
+	for object in game_state.scene.objects.iter_mut() {
+            for similarity in object.1.iter_mut() {
+	let homogenous = physics
+                    .colliders
+                    .get(physics.col_tab[i])
+                    .unwrap()
+                    .position()
+                    .to_homogeneous();
+		let (_, _, scale) = similarity.deconstruct();
+		similarity.world_transformation = *homogenous.as_ref();
+		let (tra, rot, _) = similarity.deconstruct();
+		*similarity = Similarity::new(tra, rot, scale);
+		i += 1;
+            }
+	}
+*/
+
+    }
+}
+
+
 
 
 fn init_menu(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)

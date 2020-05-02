@@ -63,17 +63,19 @@ impl GameState
 {
     
     fn new(name: String,
-               scene: Scene,
-               with_physics: bool,
-               render_behavior: RenderBehavior,
-               logic_behavior: LogicBehavior,
-               gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
-               proxy: EventLoopProxy<GameEvent>,
+           scene: Scene,
+           with_physics: bool,
+           render_behavior: RenderBehavior,
+           logic_behavior: LogicBehavior,
+           gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
+           proxy: EventLoopProxy<GameEvent>,
 	   init: fn(World, &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>),
 	   ressources: &mut RessourcesHolder
     ) -> Self
     {
-        let physics = if with_physics
+	let mut world = World::new();
+
+	if with_physics
         {
             // MechanicalWorld with a gravity vector
             let mechanical_world = DefaultMechanicalWorld::new(Vector3::new(0.0, -9.81, 0.0));
@@ -96,14 +98,11 @@ impl GameState
             // Where we store the handle of every collider so we can get their position and material later (used for testing only at the moment)
             let col_tab = three_uplet.2;
 
-            Some(Physics::new(mechanical_world, geometrical_world, bodies, colliders, joint_constraints, force_generators, col_tab))
-        }
-        else
-        {
-            None
-        };
+            let physics = Physics::new(mechanical_world, geometrical_world, bodies, colliders, joint_constraints, force_generators, col_tab);
+	
+	    world.insert(physics);
+    };
 
-	let mut world = World::new();
 
 	world.insert(EventSender::new());
 
@@ -118,7 +117,7 @@ impl GameState
             gui: gui,
             logic_behavior: logic_behavior,
             proxy: proxy,
-            physics: physics,
+            physics: None,
 	    world: world,
 	    dispatcher: dispatcher
         }

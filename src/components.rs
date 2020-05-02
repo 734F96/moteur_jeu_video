@@ -49,3 +49,11 @@ impl Component for Lighting
 }
 
 
+/// The indice of the physical object
+#[derive(Debug, Clone, Copy)]
+pub struct PhysicId(pub usize);
+
+impl Component for PhysicId
+{
+    type Storage = DenseVecStorage<Self>;
+}
