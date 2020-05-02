@@ -3,7 +3,16 @@ use specs::
     Component,
     DenseVecStorage
 };
-use graphics::{Object, Handle, nalgebra::Vector3};
+use graphics::
+{
+    Object,
+    Handle,
+    nalgebra::Vector3,
+    glium::glutin::event_loop::EventLoopProxy
+};
+
+use super::GameEvent;
+
 
 
 #[derive(Debug, Clone, Copy)]
@@ -38,3 +47,5 @@ impl Component for Lighting
 {
     type Storage = DenseVecStorage<Self>;
 }
+
+

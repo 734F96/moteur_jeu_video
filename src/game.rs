@@ -25,6 +25,9 @@ use sounds::{OneSound};
 use specs::{Dispatcher, World};
 use std::thread;
 
+use std::time::{Instant, Duration};
+
+
 
 /**
 The Game structure
@@ -99,10 +102,10 @@ impl Game
 
     /// renders the stored scene
     fn render(&mut self)
-    {
+    {	
         let mut frame = self.graphic_engine.frame();
-        
-        frame.clear();
+	frame.clear();
+	
         self.states.borrow_mut()
             .render(&self.graphic_engine,
 		    &self.ressources,
@@ -111,6 +114,7 @@ impl Game
                     &mut self.gui_context);
         
         frame.swap();
+
     }
 
     pub fn load_state(&mut self,
@@ -149,11 +153,10 @@ impl Game
         name: &str,
         scene_builder: fn(&mut Game) -> Result<Scene, EngineError>,
         with_physics: bool,
-        run_logic: fn(&mut GameState, &DevicesState),
         run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
         render_behavior: RenderBehavior,
         logic_behavior: LogicBehavior,
-	init: fn(&mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
+	init: fn(World, &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
 
     )
     {
@@ -163,7 +166,6 @@ impl Game
                 scene_builder,
                 with_physics,
                 run_gui,
-                run_logic,
                 render_behavior,
                 logic_behavior,
 		init)
@@ -254,7 +256,7 @@ impl Game
     /// Initialize and runs the game
     pub fn run(mut self, fps: u64) -> Result<(), base::EngineError>
     {
-
+	
         let mut now = std::time::Instant::now();
         let mut render_date = std::time::Instant::now();
 
@@ -272,6 +274,7 @@ impl Game
                              gl_window.window(),
                              &event);
                      }
+		     
                      
                      // inputs
                      if let Some(ev) = Event::parse_relevant(event)
@@ -279,23 +282,24 @@ impl Game
                          *control_flow = self.handle_event(ev);
                      }
                      
+
                      // render
                      now = std::time::Instant::now();
                      if render_date < now
-                     {
- 
-                     self.states.borrow_mut()
-                         .logic(&self.devices.borrow());
-                        {
+                     {			 
+			 self.states.borrow_mut()
+                             .logic(&self.devices.borrow());
+                         {
                              let mut devices = self.devices.borrow_mut();
                              devices.clear();
                          }
-
-
+			 
+			 // takes about 99% of the time
                          self.render();
+			 
                          render_date = now + delay;
                      }
-
+		     
                  });
     }
     

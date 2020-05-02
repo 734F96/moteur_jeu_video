@@ -17,7 +17,8 @@ use moteur_jeu_video::
 {
     Spatial,
     Model,
-    Lighting
+    Lighting,
+    EventSender
 };
 
 use graphics::
@@ -78,10 +79,6 @@ fn make_menu_scene(
 fn game_logic(game_state: &mut GameState,
               devices: &DevicesState)
 {
-
-    if devices.key_pressed(Key::Escape) {
-        game_state.send_event(GameEvent::Push("menu state".to_string()));
-    }
 /*
     ///////////////////
     // #################################################################################
@@ -109,17 +106,6 @@ fn game_logic(game_state: &mut GameState,
 
 }
 
-fn menu_logic(game_state: &mut GameState,
-              devices: &DevicesState)
-{
-
-    if devices.key_pressed(Key::Escape) {
-        game_state.send_event(GameEvent::Pop(1));
-    }
-
-}
-
-
 
 fn render_gui(ui: &mut Ui, proxy: &EventLoopProxy<GameEvent>)
 {
@@ -138,9 +124,8 @@ fn render_gui(ui: &mut Ui, proxy: &EventLoopProxy<GameEvent>)
 
 }
 
-fn init_game(ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
+fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
 {
-    let mut world = World::new();
     world.register::<Spatial>();
     world.register::<Model>();
     world.register::<Lighting>();
@@ -330,6 +315,7 @@ fn init_game(ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, '
 
     let dispatcher = DispatcherBuilder::new()
 	.with(CameraSystem, "camera motion", &[])
+	.with(EventSendingSystem, "event sending", &[])
 	.build();
     
     (world, dispatcher)
@@ -378,10 +364,43 @@ impl<'a> System<'a> for CameraSystem
 }
 
 
+struct EventSendingSystem;
 
-fn init_menu(ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
+impl<'a> System<'a> for EventSendingSystem
 {
-    let mut world = World::new();
+
+    type SystemData = (Write<'a, EventSender>,
+		       Read<'a, DevicesState>);
+    fn run(&mut self, (mut sender, devices): Self::SystemData)
+    {
+
+	if devices.key_pressed(Key::Escape) {
+            sender.push(GameEvent::Push("menu state".to_string()));
+	}
+
+    }
+}
+
+struct MenuEventSystem;
+
+impl<'a> System<'a> for MenuEventSystem
+{
+
+    type SystemData = (Write<'a, EventSender>,
+		       Read<'a, DevicesState>);
+    fn run(&mut self, (mut sender, devices): Self::SystemData)
+    {
+
+	if devices.key_pressed(Key::Escape) {
+            sender.push(GameEvent::Pop(1));
+	}
+
+    }
+}
+
+
+fn init_menu(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
+{
     world.register::<Spatial>();
     world.register::<Model>();
     world.register::<Lighting>();
@@ -389,6 +408,7 @@ fn init_menu(ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, '
     world.insert(Camera::default());
 
     let dispatcher = DispatcherBuilder::new()
+	.with(MenuEventSystem, "event sending", &[])
 	.build();
    
     (world, dispatcher)
@@ -408,7 +428,6 @@ fn main() -> Result<(), EngineError>
     game.register_state("main state",
                         make_main_scene,
                         false,
-                        game_logic,
                         None,
                         RenderBehavior::Superpose,
                         LogicBehavior::Superpose,
@@ -417,7 +436,6 @@ fn main() -> Result<(), EngineError>
     game.register_state("menu state",
                         make_menu_scene,
                         false,
-                        menu_logic,
                         Some(render_gui),
                         RenderBehavior::Superpose,
                         LogicBehavior::Blocking,
@@ -426,7 +444,7 @@ fn main() -> Result<(), EngineError>
     );
     game.push_state("main state")?;
     game.load_state("menu state")?;
-//    println!("{:?}", game.ressources);
+    //    println!("{:?}", game.ressources);
     
     game.run(20)
 

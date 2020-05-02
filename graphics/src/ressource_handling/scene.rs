@@ -3,6 +3,8 @@ use crate::engine::{Graphical, Frame, Camera, Display};
 use crate::misc::{Similarity, new_vertexbuffer};
 
 
+use std::time::{Duration, Instant};
+
 /**
 A scene contains pointers to existing ressources and datas to place them in the space.
 */
@@ -46,18 +48,25 @@ impl Scene {
 		  frame: &mut Frame)
     {
 
-        //self.lights.print();
-
-        
         self.camera.update_aspect_ratio(gr);
         self.objects.iter().for_each(|(objects, instances)| {
+
+
+	    // 10 % of time spent	    
             let vbo = new_vertexbuffer(&gr.display, instances);
+	    
             objects
                 .iter()
                 .for_each(|obj_handle|
-                          frame.draw(&gr, ressources.get_by_handle(*obj_handle), &vbo, &self.camera, &self.lights)
-                )
+                          frame.draw(&gr,
+				     ressources.get_by_handle(*obj_handle),
+				     &vbo,
+				     &self.camera,
+				     &self.lights)
+                );
+		
         });
     }
-    
+
+
 }
