@@ -31,7 +31,7 @@ use graphics::
     RessourcesHolder
 };
 
-use physics::Physics;
+use physics::{Physics, make_trimesh};
 
 use nalgebra::{Translation, Rotation};
 
@@ -265,7 +265,9 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         .build();
     }
 
-    let bouteille = Model(ressources.get_whole_content("bouteille").unwrap());
+    let bouteille = Model(ressources.get_whole_content("bouteille").unwrap()); // Model
+    let obj_bouteille = ressources.get_by_handle(bouteille.0) ; // &Object
+    let bouteille_trimesh = make_trimesh(obj_bouteille) ; 
     let bouteilles_positions = vec! [
         Spatial { pos: vec3(-14.1798, 1.47845, -15.2044), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-14.2691, 1.47845, -15.0703), rot: vec3(0., 0., 0.), scale:1. },
@@ -294,14 +296,14 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 
     for _ in 0..10
     {
-	let radius = 10.;
+	let radius = 30.;
 	let pos = [(rand::random::<f32>()-0.5)*radius,
 		   (rand::random::<f32>()-0.5)*radius,
 		   (rand::random::<f32>()-0.5)*radius];
 	let rot = [rand::random::<f32>(); 3];
 	let light = Light::Point
 	    (
-		1.,
+		1000.,
 		pos,
 		rot
 	    );

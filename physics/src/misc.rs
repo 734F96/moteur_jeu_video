@@ -12,7 +12,7 @@ use na::geometry::Point3;
 
 use nphysics3d::algebra::Velocity3;
 
-use graphics::Scene;
+use graphics::{Scene, Object, Vertex};
 use std::f32::consts::PI;
 use std::f32::INFINITY;
 
@@ -20,7 +20,7 @@ use nphysics3d::object::ActivationStatus;
 
 // We implement the Clone trait to the structure
 #[derive(Clone)]
-/// Different types of shape an object can take
+/// Different types of shape an PhysicObject can take
 pub enum ShapeType {
     Ball(Ball),
     Capsule(Capsule),
@@ -143,16 +143,16 @@ impl ColData{
     }
 }
 
-/// An object with different features
-pub struct Object {
+/// An PhysicObject with different features
+pub struct PhysicObject {
     pub shape: ShapeType,
     pub rbdata: RbData,
     pub coldata: ColData
 }
 
-impl Object{
-    pub fn new(shape: ShapeType, rbdata: RbData, coldata: ColData) -> Object{
-        Object{
+impl PhysicObject{
+    pub fn new(shape: ShapeType, rbdata: RbData, coldata: ColData) -> PhysicObject{
+        PhysicObject{
             shape: shape, 
             rbdata: rbdata, 
             coldata: coldata
@@ -160,9 +160,9 @@ impl Object{
     }
 }
 
-/// A set that contains many 'Object'
+/// A set that contains many 'PhysicObject'
 pub struct ObjSet{
-    pub tab: Vec<Object>
+    pub tab: Vec<PhysicObject>
 }
 
 impl ObjSet{
@@ -174,8 +174,8 @@ impl ObjSet{
         }
     }
 
-    /// Puts tha 'Object' given in parameter in the tab of the 'ObjSet'
-    pub fn push(&mut self, obj: Object){
+    /// Puts tha 'PhysicObject' given in parameter in the tab of the 'ObjSet'
+    pub fn push(&mut self, obj: PhysicObject){
 
         &mut self.tab.push(obj);
     }
@@ -183,7 +183,7 @@ impl ObjSet{
 
 
 
-/// Creates and returns a RigidBody corresponding to the object's shape
+/// Creates and returns a RigidBody corresponding to the PhysicObject's shape
 pub fn process_shape(event: ShapeType) -> ShapeHandle<f32>{
     match event {
         ShapeType::Ball(ball) => return Ball::process_ball(ball),
@@ -202,19 +202,19 @@ pub fn process_shape(event: ShapeType) -> ShapeHandle<f32>{
 
 
 
-/// Creates the RigidBody and Collider of every object in the ObjSet given in parameter, store them in a ColliderSet and a Vector<Collider> and returns it
+/// Creates the RigidBody and Collider of every PhysicObject in the ObjSet given in parameter, store them in a ColliderSet and a Vector<Collider> and returns it
 pub fn build_rb_col(obj_set: ObjSet) -> (DefaultBodySet<f32>, DefaultColliderSet<f32>, Vec<generational_arena::Index>){
 
-    // Where we store all the RigidBody object
+    // Where we store all the RigidBody PhysicObject
     let mut bodies = DefaultBodySet::new();
 
-    // Where we store all the Collider object
+    // Where we store all the Collider PhysicObject
     let mut colliders = DefaultColliderSet::<f32>::new();
 
     // Where we store the handle of every collider so we can get their position and material later (used for testing only at the moment)
     let mut coll_tab = Vec::new();
 
-    // For every object in obj_set
+    // For every PhysicObject in obj_set
     for object in &obj_set.tab{
 
         let shape = process_shape(object.shape.clone());
@@ -268,7 +268,30 @@ pub fn build_rb_col(obj_set: ObjSet) -> (DefaultBodySet<f32>, DefaultColliderSet
 }
 
 
+// Create the ShapeType::TriMesh associated to the object and return it
+pub fn make_trimesh(object: &Object) //-> ShapeType
+{
+    let all_vertex = object.data.iter().map( |(group, programId)|  
+        {
+            let vertexes = unsafe { (*group.vertexes)
+                                    .read::<Vertex>() } ;
+            vertexes            
+            .iter()
+            .map(|vertex : &Vertex| { Point3::new(vertex.position[0], vertex.position[1], vertex.position[2]) })
+            .collect::<Vec<_>>()
+        }
+    ).flatten()
+    .collect::<Vec<_>>() ;
 
+    let indices = (0..(all_vertex.len()/3)).map(|i| {Point3::new(3*i, 3*i+1, 3*i+2)}).collect::<Vec<_>>() ;
+
+    //ShapeType::TriMesh(TriMesh::new(all_vertex, indices, None))  // Il faudra peut être le scale
+}
+
+
+
+// Va disparaitre car on prend pas tous les objets mais on appelle 
+// la physique individuellement sur ceux qu'on veut
 pub fn make_objects(scene: &Scene) -> ObjSet{
     let mut obj_set = ObjSet::new();
 
@@ -325,7 +348,7 @@ pub fn make_objects(scene: &Scene) -> ObjSet{
                 0                                       // user_data
             );
 
-            let handle = Object::new(shape, rb_data, col_data); // CHANGER LE NOM DE 'Object' (optionnel mais préférable)
+            let handle = PhysicObject::new(shape, rb_data, col_data); 
             obj_set.push(handle);
         }
     }
