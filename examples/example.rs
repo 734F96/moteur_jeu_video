@@ -56,6 +56,7 @@ fn make_main_scene(
     holder.load_wavefront(disp, "verres.obj", &ressources_path)?;
     holder.load_wavefront(disp, "bouteille.obj", &ressources_path)?;
     holder.load_wavefront(disp, "teto.obj", &ressources_path)?;
+    holder.add_tile(disp, "edgytet.png", &ressources_path)?;
 
     
 
@@ -145,7 +146,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         {
                 pos: vec3(rand::random(), rand::random(), rand::random()),
                 rot: vec3(rand::random(), rand::random(), rand::random()),
-                scale: 0.001
+                scale: 0.001*(1.+rand::random::<f32>())
         };
         world.create_entity()
             .with(spatial)
@@ -292,16 +293,16 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     let teto = Model(ressources.get_object("teto", "Lat式改変テト_mesh_Lat式改変テト").unwrap());
 
 
-    for _ in 0..10
+    for _ in 0..5
     {
-	let radius = 10.;
+	let radius = 30.;
 	let pos = [(rand::random::<f32>()-0.5)*radius,
 		   (rand::random::<f32>()-0.5)*radius,
 		   (rand::random::<f32>()-0.5)*radius];
 	let rot = [rand::random::<f32>(); 3];
 	let light = Light::Point
 	    (
-		1.,
+		500.,
 		pos,
 		rot
 	    );
@@ -467,6 +468,18 @@ fn init_menu(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     world.insert(DevicesState::default());
     world.insert(Camera::default());
 
+    let tile = ressources.get_tile("edgytet").unwrap();
+    world.create_entity()
+        .with(Model(tile))
+	.with(Spatial{
+	    pos: vec3(0., 0., 0.),
+	    rot: vec3(0., 0., 1.),
+	    scale: 0.15
+	})
+        .build();
+
+    
+    
     let dispatcher = DispatcherBuilder::new()
 	.with(MenuEventSystem, "event sending", &[])
 	.build();

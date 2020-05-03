@@ -102,10 +102,10 @@ impl RessourcesHolder {
     /// Add a tile based on the given image.
     pub fn add_tile( &mut self,
                       display: &Display,
-                      base: &Base,
-                      image_path: &str ) -> Result<(), EngineError>
+                      path: &str,
+		      ressources_path: &Path) -> Result<(), EngineError>
     {
-        let path = PathBuf::from(image_path);
+        let path = ressources_path.join(PathBuf::from(path));
         let name = match path.file_stem()
         {
             None => EngineError::new("tile texture has invalid name"),
@@ -117,7 +117,7 @@ impl RessourcesHolder {
                 Some(thing) => Ok(thing)
             }
         }?;
-        let tile = Tile::new(base, display, path)?;
+        let tile = Tile::new(path, display)?;
         self.tiles.insert(name, tile);
         Ok(())
     }
@@ -136,8 +136,7 @@ impl RessourcesHolder {
     
     /// Fetch a displayable tile as a drawable Object
     pub fn get_tile(&mut self,
-                    name: &str,
-                    display: &Display ) -> Result<Handle<Object>, EngineError>
+                    name: &str) -> Result<Handle<Object>, EngineError>
     {
         match self.tiles.get(name)
         {
@@ -145,22 +144,10 @@ impl RessourcesHolder {
             Some(tile) =>
             {
                 let program = *self.get_program("textured_2d").unwrap();
-                let (w, h) = tile.dims;
-
-	        let mesh = vec![
-	            Vertex{position: [0., 0., 0.], texture: [0., 0.], .. Default::default()},
-	            Vertex{position: [w, 0., 0.], texture: [1., 0.], .. Default::default()},
-	            Vertex{position: [w, h, 0.], texture: [1., 1.], .. Default::default()},
-	            Vertex{position: [0., 0., 0.], texture: [0., 0.], .. Default::default()},
-	            Vertex{position: [0., h, 0.], texture: [0., 1.], .. Default::default()},
-	            Vertex{position: [w, h, 0.], texture: [1., 1.], .. Default::default()},
-	        ];
-
-                let vbo = VertexBuffer::new(&display.display, &mesh).unwrap().into();
 
                 let group = Group
                 {
-                    vertexes: Arc::new(vbo),
+                    vertexes: tile.dims.clone(),
                     material: tile.texture.clone()
                 };
                 let params = self.params.get("foreground").unwrap().clone();

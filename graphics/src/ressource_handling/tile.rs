@@ -1,8 +1,12 @@
 use std::path::PathBuf;
-use glium::texture::{RawImage2d, Texture2d};
+use glium::
+{
+    texture::{RawImage2d, Texture2d},
+    vertex::{VertexBuffer, VertexBufferAny},
+};
 use std::sync::Arc;
 
-use super::Material;
+use super::{Material, Vertex};
 use crate::engine::Display;
 use base::{Base, EngineError};
 
@@ -14,17 +18,20 @@ Stores the proportions of the image and the image itselve.
 pub struct Tile
 {
     pub texture: Arc<Material>,
-    pub dims: (f32, f32)
+    pub dims: Arc<VertexBufferAny>
 }
 
 
 impl Tile
 {
     /// Creates a new Tile from the given image path
-    pub fn new(base: &Base, display: &Display, image_path: PathBuf) -> Result<Self, EngineError>
+    pub fn new(path: PathBuf, display: &Display) -> Result<Self, EngineError>
     {
-        let image = base.open_image(image_path)?
-	    .to_rgba();
+//        let image = base.open_image(path)?
+//	    .to_rgba();
+
+	let image = image::open(path)?.to_rgba();
+	
         
         let (x, y) = image.dimensions();
         let max = x.max(y) as f32;
@@ -46,11 +53,29 @@ impl Tile
             specular_exponent: 0.,
             opacity: 0.
         };
+
+	let (w, h) = dims;
+
+	let z = -1.;
+	
+	let mesh = vec![
+	    Vertex{position: [0., 0., z], texture: [0., 0.], .. Default::default()},
+	    Vertex{position: [w, 0., z], texture: [1., 0.], .. Default::default()},
+	    Vertex{position: [w, h, z], texture: [1., 1.], .. Default::default()},
+	    Vertex{position: [0., 0., z], texture: [0., 0.], .. Default::default()},
+	    Vertex{position: [w, h, z], texture: [1., 1.], .. Default::default()},
+	    Vertex{position: [0., h, z], texture: [0., 1.], .. Default::default()},
+	];
+
+        let vbo: VertexBufferAny = VertexBuffer::new(&display.display, &mesh).unwrap().into();
+
+
+	
         Ok(
             Self
             {
                 texture: Arc::new(mat),
-                dims: dims
+                dims: Arc::new(vbo)
             }
 
         )

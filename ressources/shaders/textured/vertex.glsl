@@ -13,6 +13,9 @@ uniform mat4 view_matrix;
 uniform mat4 perspective_matrix;
 
 
+uniform sampler2D tex;
+
+
 void main()
 {
      // for non-uniform scaling
@@ -23,8 +26,8 @@ void main()
 	
      gl_Position =
 	  perspective_matrix
-	  *view_matrix
-	  *world_position;
+	  * view_matrix
+	  * world_position;
 
      v_tex_coords = texture;
 }

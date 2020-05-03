@@ -81,7 +81,7 @@ impl Frame {
                 We look forward to replace this by something cleaner (or safer).
 		Takes roughly 50% of time
                  */
-		unsafe {texture.generate_mipmaps();}
+//		unsafe {texture.generate_mipmaps();}
 
                 self.frame
                     .draw(
@@ -150,7 +150,10 @@ impl Frame {
                         (vertex_buffer, per_instance.per_instance().unwrap()),
                         indices,
                         program,
-                        &uniform! {view_matrix: camera.get_view_matrix() },
+                        &uniform! {
+			    view_matrix: camera.get_view_matrix(),
+                            perspective_matrix: camera.get_perspective_matrix(),
+			},
                         &params.parameters,
                     )
                     .unwrap();
