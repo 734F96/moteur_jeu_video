@@ -271,14 +271,20 @@ pub fn build_rb_col(obj_set: ObjSet) -> (DefaultBodySet<f32>, DefaultColliderSet
 // Create the ShapeType::TriMesh associated to the object and return it
 pub fn make_trimesh(object: &Object) //-> ShapeType
 {
-    let all_vertex = object.data.iter().map( |(group, programId)|  
-        {
-            let vertexes = unsafe { (*group.vertexes)
-                                    .read::<Vertex>() } ;
-            vertexes            
-            .iter()
-            .map(|vertex : &Vertex| { Point3::new(vertex.position[0], vertex.position[1], vertex.position[2]) })
-            .collect::<Vec<_>>()
+    let all_vertex = object.data.iter()
+	.map(|(group, programId)|  
+	     {
+		 (*group.vertexes)
+		     .read()
+		     .iter()
+		     .flatten()
+		     .map(|vertex: &Vertex|
+			  {
+			      Point3::new(vertex.position[0],
+					  vertex.position[1],
+					  vertex.position[2])
+			  })
+		     .collect::<Vec<_>>()
         }
     ).flatten()
     .collect::<Vec<_>>() ;

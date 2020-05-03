@@ -156,7 +156,7 @@ impl RessourcesHolder {
 	            Vertex{position: [w, h, 0.], texture: [1., 1.], .. Default::default()},
 	        ];
 
-                let vbo = VertexBuffer::new(&display.display, &mesh).unwrap().into();
+                let vbo = VertexBuffer::new(&display.display, &mesh).unwrap();
 
                 let group = Group
                 {
