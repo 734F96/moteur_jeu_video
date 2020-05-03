@@ -59,13 +59,16 @@ impl Physics
         force_generators: DefaultForceGeneratorSet<f32>,
         col_tab: Vec<generational_arena::Index>) -> Physics{
 
-        let physics = Physics{mechanical_world: mechanical_world,
+        let physics = Physics
+	{
+	    mechanical_world: mechanical_world,
             geometrical_world: geometrical_world,
             bodies: bodies,
             colliders: colliders,
             joint_constraints: joint_constraints,
             force_generators: force_generators,
-            col_tab};
+            col_tab
+	};
 
         return physics;
     }

@@ -1,8 +1,8 @@
 #version 140
 
-in vec3 v_normal;
+smooth in vec3 v_normal;
 in vec2 v_tex_coords;
-in vec3 v_position;
+smooth in vec3 v_position;
 
 
 out vec4 f_color;
@@ -46,9 +46,11 @@ void main()
 {
      vec3 diffuse = texture(tex, v_tex_coords).rgb;
      vec3 norm = normalize(v_normal);
-    f_color = vec4(0);
+     f_color = vec4(0);
 
-    vec3 light_dir = vec3(0.);
+     vec3 light_dir = vec3(0.);
+
+     float light_distance = 0.;
     
     for (uint i = 0u; i < n_lights; ++i)
     {
@@ -60,6 +62,8 @@ void main()
 	else
 	{
 	    light_dir = normalize(-l_pos[i]);
+	    light_distance = distance(l_pos[i], v_position);
+
 	}
 	float diffuse_coef = max(dot(norm, light_dir), 0.0);
 
@@ -70,10 +74,10 @@ void main()
 	    max(dot(half_direction, norm),
 		0.0),
 	    specular_exponent);
-	
 
-	vec3 color = diffuse*diffuse_coef+specular*specular_coef;
+	float attenuation = l_intensity[i]/pow(light_distance, 2);
 
+	vec3 color = attenuation*(diffuse*diffuse_coef+specular*specular_coef);
 	    
 	f_color += vec4(color, 0.5) ;
    }

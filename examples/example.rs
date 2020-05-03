@@ -292,7 +292,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     let teto = Model(ressources.get_object("teto", "Lat式改変テト_mesh_Lat式改変テト").unwrap());
 
 
-    for _ in 0..5
+    for _ in 0..10
     {
 	let radius = 10.;
 	let pos = [(rand::random::<f32>()-0.5)*radius,

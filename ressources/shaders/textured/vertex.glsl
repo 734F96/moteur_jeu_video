@@ -6,8 +6,8 @@ in mat4 world_transformation;
 in vec2 texture;
 
 out vec2 v_tex_coords;
-out vec3 v_position;
-out vec3 v_normal;
+smooth out vec3 v_position;
+smooth out vec3 v_normal;
 
 uniform mat4 view_matrix;
 uniform mat4 perspective_matrix;
@@ -15,18 +15,16 @@ uniform mat4 perspective_matrix;
 
 void main()
 {
-	vec3 norm = normalize((world_transformation*vec4(normal, 0.)).xyz);
-
-	v_normal = norm;
-	//v_normal = normalize(transpose(inverse(mat3(world_transformation))) * normal);
-
-	vec4 world_position = world_transformation * vec4(position, 1.0);
-	v_position = world_position.xyz / world_position.w;
+     // for non-uniform scaling
+     v_normal = normalize(transpose(inverse(mat3(world_transformation))) * normal);
+     
+     vec4 world_position = world_transformation * vec4(position, 1.0);
+     v_position = world_position.xyz / world_position.w;
 	
-	gl_Position =
-	    perspective_matrix
-	    *view_matrix
-	    *world_position;
+     gl_Position =
+	  perspective_matrix
+	  *view_matrix
+	  *world_position;
 
-	v_tex_coords = texture;
+     v_tex_coords = texture;
 }
