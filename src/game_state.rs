@@ -1,4 +1,4 @@
-use super::{GameEvent, Game, Model, Spatial, Lighting};
+use super::{GameEvent, Game, Model, Spatial, Lighting, RenderLayer};
 use graphics::{Scene, Graphical, Frame, RessourcesHolder};
 use events_handling::DevicesState;
 use graphics::
@@ -75,6 +75,9 @@ impl GameState
     {
 	let mut world = World::new();
 
+	world.register::<RenderLayer>();
+
+	
 	if with_physics
         {
             // MechanicalWorld with a gravity vector
@@ -157,17 +160,41 @@ impl GameState
     {
 	// pas d'instantiation pour l'instant (soon)
 	let models_storage = self.world.read_storage::<Model>();
+	let layer_storage = self.world.read_storage::<RenderLayer>();
 	let light_storage = self.world.read_storage::<Lighting>();
 	let spatial_storage = self.world.read_storage::<Spatial>();
-	let instances = (&models_storage, &spatial_storage).par_join()
-	    .fold(|| HashMap::new(), |mut instances, (Model(obj_handle), Spatial{pos, rot, scale})|
+
+
+	// the number of layer per scene
+	// should be customizable later
+	let nb_layers = 8;
+
+
+	// the treatement of the scene is paralelized, so there is two part:
+	// one parallel, and a sequential one consiting of collecting and putting
+	// together the results of the the various threads
+	let instances = (&models_storage,
+			 &spatial_storage,
+			 (&layer_storage).maybe()
+	).par_join()
+	    .fold(|| vec![HashMap::new(); nb_layers],
+		  |mut instances,
+		  (
+		      Model(obj_handle),
+		      Spatial{pos, rot, scale},
+		      maybe_layered
+		  )|
 		  {
+
+		      let layer = if let Some(RenderLayer(layer)) = maybe_layered
+		      {*layer} else {0};
+		      
 		      let similarity = Similarity::new(*pos, *rot, *scale);
-		      match instances.get_mut(obj_handle)
+		      match instances[layer].get_mut(obj_handle)
 		      {
 			  None =>
 			  {
-			      instances.insert(obj_handle, vec![similarity]);
+			      instances[layer].insert(obj_handle, vec![similarity]);
 			  },
 			  Some(v) =>
 			  {
@@ -177,11 +204,13 @@ impl GameState
 		      instances
 		  })
 	    .reduce(
-		|| HashMap::new(),
+		|| vec![HashMap::new(); nb_layers],
 		|mut total, part|
 		{
-		    part.into_iter()
-			.for_each(
+		    for (mut total, part) in total.iter_mut().zip(part.into_iter())
+		    {
+			part.into_iter()
+			    .for_each(
 			    |(obj_handle, mut vect)|
 			    {
 				match total.get_mut(obj_handle)
@@ -195,11 +224,18 @@ impl GameState
 					v.append(&mut vect);
 				    }
 				};
-			    });
-			total
+			    })
+		    }
+		    
+		    total
 		}
 	    );
+
+
+	
+
 	let objects: Vec<_> = instances.into_par_iter()
+	    .flatten()
 	    .map(|(model, inst)| (vec![*model], inst))
 	    .collect();
 	self.scene.objects = objects;

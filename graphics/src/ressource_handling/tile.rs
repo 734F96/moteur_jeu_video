@@ -56,8 +56,8 @@ impl Tile
 
 	let (w, h) = dims;
 
-	let z = -1.;
-	
+	let z = 0.;
+	/*
 	let mesh = vec![
 	    Vertex{position: [0., 0., z], texture: [0., 0.], .. Default::default()},
 	    Vertex{position: [w, 0., z], texture: [1., 0.], .. Default::default()},
@@ -65,6 +65,15 @@ impl Tile
 	    Vertex{position: [0., 0., z], texture: [0., 0.], .. Default::default()},
 	    Vertex{position: [w, h, z], texture: [1., 1.], .. Default::default()},
 	    Vertex{position: [0., h, z], texture: [0., 1.], .. Default::default()},
+	];
+*/
+	let mesh = vec![
+	    Vertex{position: [-w/2., -h/2., z], texture: [0., 0.], .. Default::default()},
+	    Vertex{position: [w/2., -h/2., z], texture: [1., 0.], .. Default::default()},
+	    Vertex{position: [w/2., h/2., z], texture: [1., 1.], .. Default::default()},
+	    Vertex{position: [-w/2., -h/2., z], texture: [0., 0.], .. Default::default()},
+	    Vertex{position: [w/2., h/2., z], texture: [1., 1.], .. Default::default()},
+	    Vertex{position: [-w/2., h/2., z], texture: [0., 1.], .. Default::default()},
 	];
 
         let vbo: VertexBufferAny = VertexBuffer::new(&display.display, &mesh).unwrap().into();

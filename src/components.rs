@@ -1,7 +1,8 @@
 use specs::
 {
     Component,
-    DenseVecStorage
+    DenseVecStorage,
+    NullStorage
 };
 use graphics::
 {
@@ -54,6 +55,14 @@ impl Component for Lighting
 pub struct PhysicId(pub usize);
 
 impl Component for PhysicId
+{
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Default)]
+pub struct RenderLayer(pub usize);
+
+impl Component for RenderLayer
 {
     type Storage = DenseVecStorage<Self>;
 }

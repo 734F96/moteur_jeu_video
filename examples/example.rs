@@ -13,7 +13,9 @@ use specs::
     System,
     ReadStorage,
     WriteStorage,
-    Join
+    Join,
+    Component,
+    NullStorage
 };
 
 use moteur_jeu_video::
@@ -22,7 +24,8 @@ use moteur_jeu_video::
     Model,
     Lighting,
     PhysicId,
-    EventSender
+    EventSender,
+    RenderLayer
 };
 
 use graphics::
@@ -57,6 +60,7 @@ fn make_main_scene(
     holder.load_wavefront(disp, "bouteille.obj", &ressources_path)?;
     holder.load_wavefront(disp, "teto.obj", &ressources_path)?;
     holder.add_tile(disp, "edgytet.png", &ressources_path)?;
+    holder.add_tile(disp, "tetstonks.png", &ressources_path)?;
 
     
 
@@ -135,8 +139,22 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     world.register::<Spatial>();
     world.register::<Model>();
     world.register::<Lighting>();
+    world.register::<RotationNulleComponent>();
     world.insert(DevicesState::default());
     world.insert(Camera::default());
+
+    let tile = ressources.get_tile("tetstonks").unwrap();
+    world.create_entity()
+        .with(Model(tile))
+	.with(Spatial{
+	    pos: vec3(0., 0., -0.5),
+	    rot: vec3(0., 0., 1.),
+	    scale: 0.4
+	})
+	.with(RotationNulleComponent)
+	.with(RenderLayer(4))
+        .build();
+
 
     
     let sphere = Model(ressources.get_object("transparent_sphere", "Sphere").unwrap());
@@ -322,6 +340,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     let dispatcher = DispatcherBuilder::new()
 	.with(CameraSystem, "camera motion", &[])
 	.with(EventSendingSystem, "event sending", &[])
+	.with(RotationNulleSystem, "test rotation", &[])
 	.build();
     
     (world, dispatcher)
@@ -472,9 +491,9 @@ fn init_menu(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     world.create_entity()
         .with(Model(tile))
 	.with(Spatial{
-	    pos: vec3(0., 0., 0.),
+	    pos: vec3(0., 0., -1.),
 	    rot: vec3(0., 0., 1.),
-	    scale: 0.15
+	    scale: 0.4
 	})
         .build();
 
@@ -486,6 +505,31 @@ fn init_menu(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
    
     (world, dispatcher)
 }
+
+#[derive(Default)]
+struct RotationNulleComponent;
+
+impl Component for RotationNulleComponent
+{
+    type Storage = NullStorage<Self>;
+}
+
+struct RotationNulleSystem;
+
+impl<'a> System<'a> for RotationNulleSystem
+{
+    type SystemData = (WriteStorage<'a, Spatial>,
+		       ReadStorage<'a, RotationNulleComponent>);
+
+    fn run(&mut self, (mut poses, rotables): Self::SystemData)
+    {
+	for (spatial, _) in (&mut poses, &rotables).join()
+	{
+	    spatial.rot[2]+=0.1;
+	}
+    }
+}
+
 
 /*
 Un exemple simple avec un état de jeu et un état pour le menu.
