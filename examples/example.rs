@@ -31,7 +31,7 @@ use graphics::
     RessourcesHolder
 };
 
-use physics::{Physics, make_trimesh};
+use physics::{Physics, make_trimesh, ShapeType};
 
 use nalgebra::{Translation, Rotation, normalize};
 
@@ -138,7 +138,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     world.insert(DevicesState::default());
     world.insert(Camera::default());
 
-    let physics = Physics::default();
+    let mut physics = Physics::default();
     
     let sphere = Model(ressources.get_object("transparent_sphere", "Sphere").unwrap());
     for _ in 0..50
@@ -285,7 +285,11 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-12.613, 1.2616, -10.0908), rot: vec3(0., 0., 0.), scale:1. },
         ];
     for position in bouteilles_positions.iter()
-    {   world.create_entity()
+    {   
+        let physic_obj_bouteille = bouteille_trimesh.make_object(position.pos, position.rot, position.scale, true);
+        physics.build_rigbd_col(&physic_obj_bouteille);
+
+        world.create_entity()
         .with(*position)
         .with(bouteille)
         .build();
@@ -343,7 +347,7 @@ impl<'a> System<'a> for CameraSystem
     {
 
 	let sensibility = 0.003;
-	let speed = 0.08; // parce que pourquoi pas.
+	let speed = 0.40; // parce que pourquoi pas.
 
 	let (mouse_x, mouse_y) = devices.mouse_motion();
 

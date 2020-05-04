@@ -18,6 +18,8 @@ use std::f32::INFINITY;
 
 use nphysics3d::object::ActivationStatus;
 
+use crate::Physics;
+
 // We implement the Clone trait to the structure
 #[derive(Clone)]
 /// Different types of shape an PhysicObject can take
@@ -34,6 +36,64 @@ pub enum ShapeType {
     TriMesh(TriMesh),
     Triangle(Triangle)
 }
+
+impl ShapeType 
+{
+    pub fn make_object(&self, translation : Vector3<f32>, rotation : Vector3<f32>, scale : f32, gravity : bool) -> PhysicObject
+    {
+        match self
+        {
+            ShapeType::TriMesh(trimesh) => {
+            
+                let mut grav = true;
+                let mut shape = ShapeType::TriMesh(trimesh.clone());
+                let mut stat = BodyStatus::Static;
+
+                let rb_data = RbData::new(
+                    translation,                            // translation
+                    rotation,                               // rotation
+                    grav,                                   // gravity_enabled
+                    stat,                                   // bodystatus
+                    Vector3::new(0.0, 0.0, 0.0),            // linear_velocity
+                    Vector3::new(0.0, 0.0, 0.0),            // angular_velocity
+                    0.0,                                    // linear_damping
+                    0.0,                                    // angular_damping
+                    INFINITY,                               // max_linear_velocity
+                    INFINITY,                               // max_angular_velocity
+                    0.0,                                    // angular_inertia
+                    2000.0,                                 // mass
+                    Point3::new(0.0, 0.0, 0.0),             // local_center_of_mass
+                    ActivationStatus::default_threshold(),  // sleep_threshold
+                    Vector3::new(false, false, false),      // kinematic_translations
+                    Vector3::new(false, false, false),      // kinematic_rotations
+                    0,                                      // user_data
+                    true                                    // enable_linear_motion_interpolation
+                );
+    
+                let col_data = ColData::new(
+                    Vector3::new(0.0, 0.0, 0.0),            // translation
+                    Vector3::new(0.0, 0.0, 0.0),            // rotation
+                    0.0,                                    // density
+                    0.5,                                    // restitution
+                    0.2,                                    // friction
+                    0.01,                                   // margin
+                    0.002,                                  // linear_prediction
+                    PI / 180.0 * 5.0,                       // angular_prediction
+                    false,                                  // sensor
+                    0                                       // user_data
+                );
+    
+                PhysicObject::new(shape, rb_data, col_data)  
+    
+            },
+            _ => unimplemented!()
+        }
+            
+        
+    }
+    
+}
+
 
 /// Data needed to create a 'RigidBody'
 pub struct RbData{
@@ -269,7 +329,7 @@ pub fn build_rb_col(obj_set: ObjSet) -> (DefaultBodySet<f32>, DefaultColliderSet
 
 
 // Create the ShapeType::TriMesh associated to the object and return it
-pub fn make_trimesh(object: &Object) //-> ShapeType
+pub fn make_trimesh(object: &Object) -> ShapeType
 {
     let all_vertex = object.data.iter()
 	.map(|(group, programId)|  
@@ -291,8 +351,9 @@ pub fn make_trimesh(object: &Object) //-> ShapeType
 
     let indices = (0..(all_vertex.len()/3)).map(|i| {Point3::new(3*i, 3*i+1, 3*i+2)}).collect::<Vec<_>>() ;
 
-    //ShapeType::TriMesh(TriMesh::new(all_vertex, indices, None))  // Il faudra peut être le scale
+    ShapeType::TriMesh(TriMesh::new(all_vertex, indices, None))  // Il faudra peut être le scale
 }
+
 
 
 
