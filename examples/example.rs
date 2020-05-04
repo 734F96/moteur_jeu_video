@@ -525,7 +525,7 @@ impl<'a> System<'a> for RotationNulleSystem
     {
 	for (spatial, _) in (&mut poses, &rotables).join()
 	{
-	    spatial.rot[2]+=0.1;
+	    spatial.rot[1]+=0.1;
 	}
     }
 }
