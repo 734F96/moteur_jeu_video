@@ -33,7 +33,7 @@ use graphics::
 
 use physics::{Physics, make_trimesh};
 
-use nalgebra::{Translation, Rotation};
+use nalgebra::{Translation, Rotation, normalize};
 
 
 fn make_main_scene(
@@ -134,9 +134,11 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     world.register::<Spatial>();
     world.register::<Model>();
     world.register::<Lighting>();
+    world.register::<PhysicId>();
     world.insert(DevicesState::default());
     world.insert(Camera::default());
 
+    let physics = Physics::default();
     
     let sphere = Model(ressources.get_object("transparent_sphere", "Sphere").unwrap());
     for _ in 0..50
@@ -267,7 +269,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 
     let bouteille = Model(ressources.get_whole_content("bouteille").unwrap()); // Model
     let obj_bouteille = ressources.get_by_handle(bouteille.0) ; // &Object
-    let bouteille_trimesh = make_trimesh(obj_bouteille) ; 
+    let bouteille_trimesh = make_trimesh(obj_bouteille) ;
     let bouteilles_positions = vec! [
         Spatial { pos: vec3(-14.1798, 1.47845, -15.2044), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-14.2691, 1.47845, -15.0703), rot: vec3(0., 0., 0.), scale:1. },
@@ -319,10 +321,12 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 	    .build();
     }    
 
+    world.insert(physics);
 
     let dispatcher = DispatcherBuilder::new()
 	.with(CameraSystem, "camera motion", &[])
 	.with(EventSendingSystem, "event sending", &[])
+	.with(PhysicSystem, "physics", &[])
 	.build();
     
     (world, dispatcher)
@@ -418,7 +422,7 @@ impl<'a> System<'a> for PhysicSystem
 
 	physics.run();
 
-	for (spatial, physic_id) in (&mut spatial_st, &physical_st).join()
+	for (mut spatial, physic_id) in (&mut spatial_st, &physical_st).join()
 	{
 	    let Spatial{mut pos, mut rot, mut scale} = spatial;
 
@@ -426,13 +430,11 @@ impl<'a> System<'a> for PhysicSystem
 		.colliders
 		.get(physics.col_tab[physic_id.0])
 		.unwrap()
-		.position();
-
-	    // pas fini: je cherchais un moyen efficace d'extraire les 2 vecteurs
-	    unreachable!()
-//	    pos = isometry.translation;
-//	    rot = isometry.rotation();
-		
+		.position().to_homogeneous();
+	    let rotation = normalize(&(isometry * vec4(1., 1., 1., 0.)).xyz());
+	    let translation = (isometry * vec4(0., 0., 0., 1.));
+	    spatial.rot = rotation.xyz();
+	    spatial.pos = translation.xyz()/translation[3];
 	    
 	}
 
