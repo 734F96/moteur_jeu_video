@@ -8,7 +8,7 @@ use na::base::Unit;
 
 
 // We implement the Clone trait to the structure
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Plane
 {
     pub normal: Unit<Vector3<f32>>

@@ -21,7 +21,7 @@ use moteur_jeu_video::
     Spatial,
     Model,
     Lighting,
-    PhysicId,
+    PhysicComponent,
     EventSender
 };
 
@@ -134,7 +134,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     world.register::<Spatial>();
     world.register::<Model>();
     world.register::<Lighting>();
-    world.register::<PhysicId>();
+    world.register::<PhysicComponent>();
     world.insert(DevicesState::default());
     world.insert(Camera::default());
 
@@ -296,7 +296,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     let teto = Model(ressources.get_object("teto", "Lat式改変テト_mesh_Lat式改変テト").unwrap());
 
 
-    for _ in 0..10
+    for _ in 0..4
     {
 	let radius = 30.;
 	let pos = [(rand::random::<f32>()-0.5)*radius,
@@ -415,20 +415,21 @@ impl<'a> System<'a> for PhysicSystem
 {
     type SystemData = (Write<'a, Physics>,
 		       WriteStorage<'a, Spatial>,
-		       ReadStorage<'a, PhysicId>);
+		       ReadStorage<'a, PhysicComponent>);
 
     fn run(&mut self, (mut physics, mut spatial_st, physical_st): Self::SystemData)
     {
 
 	physics.run();
 
-	for (mut spatial, physic_id) in (&mut spatial_st, &physical_st).join()
+	for (mut spatial, physic_comp) in (&mut spatial_st, &physical_st).join()
 	{
+	    let physic_id = physic_comp.collider_id;
 	    let Spatial{mut pos, mut rot, mut scale} = spatial;
 
 	    let isometry = physics
 		.colliders
-		.get(physics.col_tab[physic_id.0])
+		.get(physics.col_tab[physic_id])
 		.unwrap()
 		.position().to_homogeneous();
 	    let rotation = normalize(&(isometry * vec4(1., 1., 1., 0.)).xyz());

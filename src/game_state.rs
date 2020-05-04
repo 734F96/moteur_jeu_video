@@ -1,4 +1,4 @@
-use super::{GameEvent, Game, Model, Spatial, Lighting};
+use super::{GameEvent, Game, Model, Spatial, Lighting, PhysicComponent};
 use graphics::{Scene, Graphical, Frame, RessourcesHolder};
 use events_handling::DevicesState;
 use graphics::
@@ -54,7 +54,7 @@ pub struct GameState
     proxy: EventLoopProxy<GameEvent>,
 
     pub world: World,
-    dispatcher: Dispatcher<'static, 'static>
+    dispatcher: Dispatcher<'static, 'static> // game states never die
 }
 
 

@@ -19,7 +19,7 @@ use std::f32::INFINITY;
 use nphysics3d::object::ActivationStatus;
 
 // We implement the Clone trait to the structure
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 /// Different types of shape an PhysicObject can take
 pub enum ShapeType {
     Ball(Ball),

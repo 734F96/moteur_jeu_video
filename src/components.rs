@@ -1,3 +1,4 @@
+
 use specs::
 {
     Component,
@@ -49,11 +50,18 @@ impl Component for Lighting
 }
 
 
-/// The indice of the physical object
-#[derive(Debug, Clone, Copy)]
-pub struct PhysicId(pub usize);
 
-impl Component for PhysicId
+use physics::ShapeType;
+
+/// The indice of the physical object
+#[derive(Debug, Clone)]
+pub struct PhysicComponent
+{
+    pub collider_id: usize,
+    pub shape: ShapeType
+}
+
+impl Component for PhysicComponent
 {
     type Storage = DenseVecStorage<Self>;
 }

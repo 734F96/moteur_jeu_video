@@ -7,7 +7,7 @@ use na::Vector3;
 
 
 // We implement the Clone trait to the structure
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Cuboid
 {
     pub vector: Vector3<f32>
