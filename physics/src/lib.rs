@@ -7,3 +7,5 @@ pub use shapes::*;
 pub use misc::*;
 
 pub use nphysics3d;
+
+pub use generational_arena;

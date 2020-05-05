@@ -57,7 +57,7 @@ use physics::ShapeType;
 #[derive(Debug, Clone)]
 pub struct PhysicComponent
 {
-    pub collider_id: usize,
+    pub collider_id: physics::generational_arena::Index,
     pub shape: ShapeType
 }
 

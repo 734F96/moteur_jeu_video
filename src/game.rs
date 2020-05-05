@@ -152,7 +152,6 @@ impl Game
         &mut self,
         name: &str,
         scene_builder: fn(&mut Game) -> Result<Scene, EngineError>,
-        with_physics: bool,
         run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
         render_behavior: RenderBehavior,
         logic_behavior: LogicBehavior,
@@ -164,7 +163,6 @@ impl Game
             .register(
                 name,
                 scene_builder,
-                with_physics,
                 run_gui,
                 render_behavior,
                 logic_behavior,

@@ -1,6 +1,9 @@
 use glium::uniforms::UniformBuffer;
 pub const N_MAX_LIGHTS: usize = 128;
 
+use nalgebra::Vector3;
+
+
 #[derive(Debug, Clone, Copy)]
 pub enum Light
 {
@@ -35,13 +38,13 @@ impl Lights
         }
     }
 
-    pub fn push(&mut self, light: Light)
+    pub fn push(&mut self, light: Light, maybe_pos: Option<[f32; 3]>)
     {
         if (self.n as usize) < N_MAX_LIGHTS-1
         {
-            match light
+            match (light, maybe_pos)
             {
-                Light::Point(intensity, pos, colour) =>
+                (Light::Point(intensity, _, colour), Some(pos)) =>
                 {
 
                     let n = self.n as usize;
@@ -53,7 +56,8 @@ impl Lights
                     self.colour.map()[n] = colour;
 
                     self.n += 1;
-                }
+                },
+		_ => unimplemented!()
             }
         }
     }

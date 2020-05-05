@@ -100,20 +100,22 @@ impl Physics
     }
 
 /// Creates the RigidBody and Collider of every PhysicObject in the ObjSet given in parameter, store them in a ColliderSet and a Vector<Collider> and returns it
-    pub fn build_rigbd_col(&mut self, physic_object: &PhysicObject) {
+    pub fn build_rigbd_col(&mut self, physic_object: &PhysicObject) -> generational_arena::Index
+    {
 
         // physics.bodies
         // physics.collider
         // physics.col_tab
     
-        let shape = process_shape(physic_object.shape.clone()); // ShapeHandle object de ncollide
+        let shape = process_shape(&physic_object.shape); // ShapeHandle object de ncollide
         
         // We create the RigidBody relative to the field rbdata of 'object'
         let mut rb = RigidBodyDesc::new()
         .translation(physic_object.rbdata.translation)
         .rotation(physic_object.rbdata.rotation)
         .gravity_enabled(physic_object.rbdata.gravity_enabled)
-        .status(physic_object.rbdata.bodystatus)
+	    .status(physic_object.rbdata.bodystatus)
+	    //.status(nphysics3d::object::BodyStatus::Dynamic)
         .velocity(Velocity3::new(physic_object.rbdata.linear_velocity, physic_object.rbdata.angular_velocity))
         .linear_damping(physic_object.rbdata.linear_damping)
         .angular_damping(physic_object.rbdata.angular_damping)
@@ -122,7 +124,7 @@ impl Physics
         .angular_inertia(Matrix3::from_diagonal_element(physic_object.rbdata.angular_inertia))
         .mass(physic_object.rbdata.mass)
         .local_center_of_mass(physic_object.rbdata.local_center_of_mass)
-        .sleep_threshold(Some(physic_object.rbdata.sleep_threshold))
+            .sleep_threshold(Some(physic_object.rbdata.sleep_threshold))
         .kinematic_translations(physic_object.rbdata.kinematic_translations)
         .kinematic_rotations(physic_object.rbdata.kinematic_rotations)
         .user_data(physic_object.rbdata.user_data)
@@ -151,7 +153,8 @@ impl Physics
         let coll_handle = self.colliders.insert(collider);
     
         // Wa add the handle to the coll_tab
-        self.col_tab.push(coll_handle);
+	//        self.col_tab.push(coll_handle);
+	coll_handle
     }
     
 

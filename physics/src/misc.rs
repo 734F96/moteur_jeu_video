@@ -5,7 +5,7 @@ use nphysics3d::object::{DefaultBodySet, DefaultColliderSet, RigidBodyDesc, Body
 use nphysics3d::material::{MaterialHandle, BasicMaterial};
 
 use ncollide3d::shape::ShapeHandle;
-
+use nphysics3d::volumetric::volumetric::Volumetric;
 use na::Vector3;
 use na::Matrix3;
 use na::geometry::Point3;
@@ -17,6 +17,7 @@ use std::f32::consts::PI;
 use std::f32::INFINITY;
 
 use nphysics3d::object::ActivationStatus;
+use ncollide3d::shape::Shape;
 
 use crate::Physics;
 
@@ -39,7 +40,44 @@ pub enum ShapeType {
 
 impl ShapeType 
 {
-    pub fn make_object(&self, translation : Vector3<f32>, rotation : Vector3<f32>, scale : f32, gravity : bool) -> PhysicObject
+    pub fn make_static(
+	&self,
+	translation: Vector3<f32>,
+	rotation: Vector3<f32>,
+	scale: f32,
+	gravity: bool) -> PhysicObject
+    {
+	self.make_object(translation, rotation, scale, gravity, BodyStatus::Static)
+    }
+
+    pub fn make_dynamic(
+	&self,
+	translation: Vector3<f32>,
+	rotation: Vector3<f32>,
+	scale: f32,
+	gravity: bool) -> PhysicObject
+    {
+	self.make_object(translation, rotation, scale, gravity, BodyStatus::Dynamic)
+    }
+
+    pub fn make_kinematic(
+	&self,
+	translation: Vector3<f32>,
+	rotation: Vector3<f32>,
+	scale: f32,
+	gravity: bool) -> PhysicObject
+    {
+	self.make_object(translation, rotation, scale, gravity, BodyStatus::Kinematic)
+    }
+
+
+    pub fn make_object(
+	&self,
+	translation: Vector3<f32>,
+	rotation: Vector3<f32>,
+	scale: f32,
+	gravity: bool,
+	stat: BodyStatus) -> PhysicObject
     {
         match self
         {
@@ -47,8 +85,12 @@ impl ShapeType
             
                 let mut grav = true;
                 let mut shape = ShapeType::TriMesh(trimesh.clone());
-                let mut stat = BodyStatus::Static;
 
+		let center: Point3<f32> = trimesh
+		    .points.iter()
+		    .fold(Point3::new(0., 0., 0.),
+			  |sum, p| sum+p.coords) / (trimesh.points.len() as f32);
+		
                 let rb_data = RbData::new(
                     translation,                            // translation
                     rotation,                               // rotation
@@ -62,14 +104,15 @@ impl ShapeType
                     INFINITY,                               // max_angular_velocity
                     0.0,                                    // angular_inertia
                     2000.0,                                 // mass
-                    Point3::new(0.0, 0.0, 0.0),             // local_center_of_mass
+                    center                    ,             // local_center_of_mass
                     ActivationStatus::default_threshold(),  // sleep_threshold
                     Vector3::new(false, false, false),      // kinematic_translations
                     Vector3::new(false, false, false),      // kinematic_rotations
                     0,                                      // user_data
                     true                                    // enable_linear_motion_interpolation
                 );
-    
+
+		
                 let col_data = ColData::new(
                     Vector3::new(0.0, 0.0, 0.0),            // translation
                     Vector3::new(0.0, 0.0, 0.0),            // rotation
@@ -82,7 +125,8 @@ impl ShapeType
                     false,                                  // sensor
                     0                                       // user_data
                 );
-    
+
+		
                 PhysicObject::new(shape, rb_data, col_data)  
     
             },
@@ -115,6 +159,34 @@ pub struct RbData{
     pub kinematic_rotations: Vector3<bool>, // The rotations that will be locked for this rigid body - Default: nothing is locked (false everywhere)
     pub user_data: usize, // Arbitrary user-defined data associated to the rigid body to be built - Default: no associated data
     pub enable_linear_motion_interpolation: bool // Whether this rigid body motion should be interpolated linearly during CCD resolution - Default: false (which implies non-linear interpolation)
+}
+
+impl Default for RbData
+{
+    fn default() -> Self
+    {
+	Self
+	{
+	    translation: Vector3::new(0., 0., 0.),
+	    rotation: Vector3::new(0., 0., 0.),
+	    gravity_enabled: true,
+	    bodystatus: BodyStatus::Dynamic,
+	    linear_velocity: Vector3::new(std::f32::MAX, std::f32::MAX, std::f32::MAX),
+	    angular_velocity: Vector3::new(std::f32::MAX, std::f32::MAX, std::f32::MAX),
+	    linear_damping: 0.,
+	    angular_damping: 0.,
+	    max_linear_velocity: std::f32::MAX,
+	    max_angular_velocity: std::f32::MAX,
+	    angular_inertia: 0.,
+	    mass: 0.,
+	    local_center_of_mass: Point3::new(0., 0., 0.),
+	    sleep_threshold: 0.,
+	    kinematic_translations: Vector3::new(false, false, false),
+	    kinematic_rotations: Vector3::new(false, false, false),
+	    user_data: 0,
+	    enable_linear_motion_interpolation: false
+	}
+    }
 }
 
 impl RbData{
@@ -174,6 +246,27 @@ pub struct ColData{
     pub sensor: bool, // Whether this collider is a sensor, i.e., generate only proximity events - Default: false
     pub user_data: usize // Arbitrary user-defined data associated to the rigid body to be built - Default: no associated data
 }
+
+impl Default for ColData
+{
+    fn default() -> Self
+    {
+	Self
+	{
+	    translation: Vector3::new(0., 0., 0.),
+	    rotation: Vector3::new(0., 0., 0.),
+	    density: 0.,
+	    restitution: 0.,
+	    friction: 0.5,
+	    margin: 0.01,
+	    linear_prediction: 0.002,
+	    angular_prediction: std::f32::consts::PI/180.*5.,
+	    sensor: false,
+	    user_data: 0
+	}
+    }
+}
+
 
 impl ColData{
     pub fn new(
@@ -244,19 +337,19 @@ impl ObjSet{
 
 
 /// Creates and returns a RigidBody corresponding to the PhysicObject's shape
-pub fn process_shape(event: ShapeType) -> ShapeHandle<f32>{
+pub fn process_shape(event: &ShapeType) -> ShapeHandle<f32>{
     match event {
-        ShapeType::Ball(ball) => return Ball::process_ball(ball),
-        ShapeType::Capsule(capsule) => return Capsule::process_capsule(capsule),
-        ShapeType::Compound(compound) => return Compound::process_compound(compound),
-        ShapeType::ConvexHull(convexhull) => return ConvexHull::process_convexhull(convexhull),
-        ShapeType::Cuboid(cuboid) => return Cuboid::process_cuboid(cuboid),
-        ShapeType::HeightField(heightfield) => return HeightField::process_heightfield(heightfield),
-        ShapeType::Plane(plane) => return Plane::process_plane(plane),
-        ShapeType::Polyline(polyline) => return Polyline::process_polyline(polyline),
-        ShapeType::Segment(segment) => return Segment::process_segment(segment),
-        ShapeType::TriMesh(trimesh) => return TriMesh::process_trimesh(trimesh),
-        ShapeType::Triangle(triangle) => return Triangle::process_triangle(triangle),
+        ShapeType::Ball(ball) => return Ball::process_ball(ball.clone()),
+        ShapeType::Capsule(capsule) => return Capsule::process_capsule(capsule.clone()),
+        ShapeType::Compound(compound) => return Compound::process_compound(compound.clone()),
+        ShapeType::ConvexHull(convexhull) => return ConvexHull::process_convexhull(convexhull.clone()),
+        ShapeType::Cuboid(cuboid) => return Cuboid::process_cuboid(cuboid.clone()),
+        ShapeType::HeightField(heightfield) => return HeightField::process_heightfield(heightfield.clone()),
+        ShapeType::Plane(plane) => return Plane::process_plane(plane.clone()),
+        ShapeType::Polyline(polyline) => return Polyline::process_polyline(polyline.clone()),
+        ShapeType::Segment(segment) => return Segment::process_segment(segment.clone()),
+        ShapeType::TriMesh(trimesh) => return TriMesh::process_trimesh(trimesh.clone()),
+        ShapeType::Triangle(triangle) => return Triangle::process_triangle(triangle.clone()),
     }
 }
 
@@ -277,7 +370,7 @@ pub fn build_rb_col(obj_set: ObjSet) -> (DefaultBodySet<f32>, DefaultColliderSet
     // For every PhysicObject in obj_set
     for object in &obj_set.tab{
 
-        let shape = process_shape(object.shape.clone());
+        let shape = process_shape(&object.shape);
         
         // We create the RigidBody relative to the field rbdata of 'object'
         let mut rb = RigidBodyDesc::new()

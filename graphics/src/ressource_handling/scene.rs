@@ -31,9 +31,9 @@ impl Scene {
         self.objects.push((meshes, instances));
     }
 
-    pub fn add_light(&mut self, light: Light)
+    pub fn add_light(&mut self, light: Light, maybe_pos: Option<[f32; 3]>)
     {
-        self.lights.push(light);
+        self.lights.push(light, maybe_pos);
     }
     
     pub fn update_aspect_ratio(&mut self, gr: &Graphical)
