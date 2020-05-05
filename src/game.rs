@@ -1,7 +1,7 @@
 use graphics::Graphical;
 
 use graphics::RessourcesHolder;
-use graphics::Scene;
+use graphics::{Scene, Handle} ;
 use events_handling::{DevicesState, Event};
 
 use base::{EngineError, Base};
@@ -13,18 +13,16 @@ use glutin::event_loop::{EventLoop, ControlFlow, EventLoopProxy};
 use super::{GameState, GameStateStack, RenderBehavior, LogicBehavior, GameEvent};
 
 use std::cell::RefCell;
-
 use movable::Movable;
 
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use imgui_glium_renderer::Renderer;
 use imgui::{Context, Ui};
 
-use sounds::{OneSound};
+use sounds::{OneSound,SoundRessource};
 
 use specs::{Dispatcher, World};
-use std::thread;
-
+use std::collections::HashMap;
 
 /**
 The Game structure
@@ -39,6 +37,7 @@ pub struct Game
     event_loop: Movable<EventLoop<GameEvent>>,
     pub event_loop_proxy: EventLoopProxy<GameEvent>,
     pub states: RefCell<GameStateStack>,
+    pub sounds_played :HashMap<String,OneSound>,
 
     gui_context: Context,
     gui_renderer: Renderer,
@@ -87,6 +86,7 @@ impl Game
             states: RefCell::new(GameStateStack::new()),
             event_loop: movable,
             event_loop_proxy: proxy,
+            sounds_played: HashMap::new(),
             
 
             gui_context: imgui,
@@ -182,34 +182,51 @@ impl Game
 
 
 
-    fn play_sound(&self, music_path: String, position: Option<[f32; 3]>)
+    fn play_sound(&mut self, music_data: SoundRessource,name: String, position: Option<[f32; 3]>)
     {
-        let thread_music= thread::spawn(move || {
-	     let mut music = OneSound:: new(music_path.as_str());
+       let mut music = OneSound::new_from_data(music_data);
+       match music {
+             Ok(mut music) => {
+                  match position{
+	                None => {},
+	                Some(position) => music.give_position(position)
+                  }
 
-             match position{
-		None => {},
-		Some(position) => music.set_position(position)
-             }
-    	     music.play_all();       
-        });
+		  music.play_all();
+                  //add in the hashmap of played_sound
+                  self.sounds_played.insert(name,music);
+                   
+                   
+             },
+             Err(e) => {}
+       }
+      
     }    
 
-    fn play_sound_timeLimit(&self,music_path: String, duration: Option<f32>,position: Option<[f32; 3]>)
-    {
-        let thread_music= thread::spawn(move || {
-	     let mut music = OneSound:: new(music_path.as_str());
+    fn play_sound_timeLimit(&mut self,music_data: SoundRessource,name: String, duration: Option<f32>,position: Option<[f32; 3]>){
 
-              match position{
-		None => {},
-		Some(position) => music.set_position(position)
-	      }
-	      match duration{
-                 Some(duration) => music.play_time_limit(duration),
-                 None => music.play_nolimit()
-              }
- 
-        });
+       let mut music = OneSound::new_from_data(music_data);
+       match music{
+             Ok(mut music) => {
+                   match position{
+	                  None => {},
+		          Some(position) => music.give_position(position)
+	            } 
+
+                    
+
+                   match duration{
+                          Some(duration) => music.play_time_limit(duration),
+                          None => music.play_nolimit()
+                   }
+                   //add in the hashmap of played_sound
+                   self.sounds_played.insert(name,music);
+            },
+            Err(e)=> {}
+
+       }
+        
+
     } 
 
 
@@ -242,8 +259,8 @@ impl Game
                             &state_name
                         ).unwrap();
                     },
-                    GameEvent::PlaySound(music_path,position) => self.play_sound(music_path,position),
-    		    GameEvent::PlaySound_timeLimit(music_path,duration,position) => self.play_sound_timeLimit(music_path,duration,position)
+                    GameEvent::PlaySound(music_data,name,position) => self.play_sound(music_data,name,position),
+    		    GameEvent::PlaySound_timeLimit(music_data,name,duration,position) => self.play_sound_timeLimit(music_data,name,duration,position)
                 }
             }
             _ => ()
