@@ -449,5 +449,5 @@ fn main() -> Result<(), EngineError>
     game.load_state("menu state")?;
     //    println!("{:?}", game.ressources);
     
-    game.run(120)
+    game.run(15)
 }
