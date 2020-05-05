@@ -12,7 +12,7 @@ use na::geometry::Point3;
 
 use nphysics3d::algebra::Velocity3;
 
-use graphics::{Scene, Similarity};
+use graphics::Scene;
 use std::f32::consts::PI;
 use std::f32::INFINITY;
 

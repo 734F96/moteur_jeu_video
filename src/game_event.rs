@@ -1,6 +1,6 @@
 use sounds::{SoundRessource};
 
-
+#[derive(Debug)]
 pub enum GameEvent
 {
     QuitRequested,

@@ -33,17 +33,21 @@ impl Wavefront {
         path_to_wavefront: &Path,
         path_to_mtl: &Path,
         ressources_path: &Path,
-    ) -> Self {
+    ) -> Result<Self, EngineError> {
 
-        // try to load the files
+
+	// try to load the files
         let path_to_wavefront = ressources_path.join(path_to_wavefront);
         let path_to_mtl = ressources_path.join(path_to_mtl);
-        let file = File::open(path_to_wavefront).expect("Can't open wavefront");
+        let file = File::open(path_to_wavefront)?;
         let mut bufreader = ::std::io::BufReader::new(file);
-        let obj = Obj::load_buf(&mut bufreader).unwrap();
-        let file = File::open(path_to_mtl).unwrap();
+        let obj = Obj::load_buf(&mut bufreader)?;
+        let file = File::open(path_to_mtl)?;
         let mut bufreader = ::std::io::BufReader::new(file);
         let mtl = Mtl::load(&mut bufreader);
+
+
+
 
         /*
         parsing the materials from the .mtl
@@ -62,14 +66,17 @@ impl Wavefront {
                     map_kd: Some(texture_path),
                     ..
                 } => {
-                    let opacity = opacityy.unwrap_or(1.).min(1. - transparency.unwrap_or(0.));
-                    let image = image::open(ressources_path.join(Path::new(texture_path)))
-                        .unwrap()
-                        .to_rgba();
+                    let opacity = opacityy.unwrap_or(1.)
+			.min(1. - transparency.unwrap_or(0.));
+                    let image = image::open
+			(
+			    ressources_path.join(Path::new(texture_path))
+			)?.to_rgba();
+
                     let image_dimensions = image.dimensions();
                     let image =
                         RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
-                    let texture = Texture2d::new(&disp.display, image).unwrap();
+                    let texture = Texture2d::new(&disp.display, image)?;
                     Material::Textured {
                         texture: texture,
                         specular_color: *specular,
@@ -201,7 +208,7 @@ impl Wavefront {
                         groups);
         }
 
-        objects
+        Ok(objects)
     }
 
     /**

@@ -1,10 +1,12 @@
-use super::{GameEvent, Game, Model, Spatial};
+use super::{GameEvent, Game, Model, Spatial, Lighting};
 use graphics::{Scene, Graphical, Frame, RessourcesHolder};
 use events_handling::DevicesState;
 use graphics::
 {
     glium::glutin::event_loop::EventLoopProxy,
-    Similarity
+    Similarity,
+    Lights,
+    Camera
 };
 
 use imgui::{Ui, Context};
@@ -30,12 +32,15 @@ use rayon::iter::IntoParallelIterator;
 
 
 use specs::
-{World,
- Dispatcher,
- WorldExt,
- join::Join,
- join::ParJoin
+{
+    World,
+    Dispatcher,
+    WorldExt,
+    join::Join,
+    join::ParJoin
 };
+
+use std::time::{Instant, Duration};
 
 
 pub struct GameState
@@ -44,7 +49,6 @@ pub struct GameState
     pub scene: Scene,
     pub physics: Option<Physics>,
     gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
-    logic: fn(&mut GameState, &DevicesState),
     render_behavior: RenderBehavior,
     logic_behavior: LogicBehavior,
     proxy: EventLoopProxy<GameEvent>,
@@ -59,18 +63,19 @@ impl GameState
 {
     
     fn new(name: String,
-               scene: Scene,
-               with_physics: bool,
-               logic: fn(&mut GameState, &DevicesState),
-               render_behavior: RenderBehavior,
-               logic_behavior: LogicBehavior,
-               gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
-               proxy: EventLoopProxy<GameEvent>,
-	   init: fn(&mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>),
+           scene: Scene,
+           with_physics: bool,
+           render_behavior: RenderBehavior,
+           logic_behavior: LogicBehavior,
+           gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
+           proxy: EventLoopProxy<GameEvent>,
+	   init: fn(World, &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>),
 	   ressources: &mut RessourcesHolder
     ) -> Self
     {
-        let physics = if with_physics
+	let mut world = World::new();
+
+	if with_physics
         {
             // MechanicalWorld with a gravity vector
             let mechanical_world = DefaultMechanicalWorld::new(Vector3::new(0.0, -9.81, 0.0));
@@ -93,24 +98,26 @@ impl GameState
             // Where we store the handle of every collider so we can get their position and material later (used for testing only at the moment)
             let col_tab = three_uplet.2;
 
-            Some(Physics::new(mechanical_world, geometrical_world, bodies, colliders, joint_constraints, force_generators, col_tab))
-        }
-        else
-        {
-            None
-        };
+            let physics = Physics::new(mechanical_world, geometrical_world, bodies, colliders, joint_constraints, force_generators, col_tab);
 	
-	let (world, dispatcher) = init(ressources);
+	    world.insert(physics);
+    };
+
+
+	world.insert(EventSender::new());
+
+
+	
+	let (world, dispatcher) = init(world, ressources);
         Self
         {
             name: name,
             scene: scene,
-            logic: logic,
             render_behavior: render_behavior,
             gui: gui,
             logic_behavior: logic_behavior,
             proxy: proxy,
-            physics: physics,
+            physics: None,
 	    world: world,
 	    dispatcher: dispatcher
         }
@@ -123,7 +130,6 @@ impl GameState
         Ok(Self::new(proto.name.clone(),
                      (proto.scene_builder)(game)?,
                      proto.with_physics,
-                     proto.run_logic,
                      proto.render_behavior,
                      proto.logic_behavior,
                      proto.run_gui,
@@ -140,12 +146,18 @@ impl GameState
             _ => ()
         }
     }
+    pub fn send_events(&self)
+    {
+	let mut sender = self.world.write_resource::<EventSender>();
+	sender.send(&self.proxy);
+    }
 
     /// probably temporary function (will be in use as long as a Scene is used for render)
     pub fn update_scene(&mut self)
     {
 	// pas d'instantiation pour l'instant (soon)
 	let models_storage = self.world.read_storage::<Model>();
+	let light_storage = self.world.read_storage::<Lighting>();
 	let spatial_storage = self.world.read_storage::<Spatial>();
 	let instances = (&models_storage, &spatial_storage).par_join()
 	    .fold(|| HashMap::new(), |mut instances, (Model(obj_handle), Spatial{pos, rot, scale})|
@@ -187,10 +199,22 @@ impl GameState
 			total
 		}
 	    );
-	let data: Vec<_> = instances.into_par_iter()
+	let objects: Vec<_> = instances.into_par_iter()
 	    .map(|(model, inst)| (vec![*model], inst))
 	    .collect();
-	self.scene.objects = data;
+	self.scene.objects = objects;
+
+
+	self.scene.lights.clear();
+
+	for Lighting(light) in (&light_storage).join()
+	{
+	    self.scene.lights.push(*light)
+	}
+
+
+	let camera = self.world.read_resource::<Camera>();
+	self.scene.camera = *camera;
 	
     }
     
@@ -256,10 +280,9 @@ impl GameStateStack
         scene_builder: fn(&mut Game) -> Result<Scene, EngineError>,
         with_physics: bool,
         run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
-        run_logic: fn(&mut GameState, &DevicesState),
         render_behavior: RenderBehavior,
         logic_behavior: LogicBehavior,
-	init: fn(&mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
+	init: fn(World, &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
     
     )
     {
@@ -272,38 +295,12 @@ impl GameStateStack
                 with_physics: with_physics,
                 scene_builder: scene_builder,
                 run_gui: run_gui,
-                run_logic: run_logic,
                 render_behavior: render_behavior,
                 logic_behavior: logic_behavior,
 		init: init
             });
     }
-/*
-    pub fn push_registered(&mut self,
-                           name: String,
-                           game: &mut Game) -> Result<(), EngineError>
-    {
-        if let Some(state) = self.loaded.remove(&name)
-        {
-            self.stack.push(state);
-            Ok(())
-        }
-        else if let Some(proto) = self.register.get(&name)
-        {
-            self.stack.push(
-                GameState::from_proto(
-                    game,
-                    proto
-                )?
-            );
-            Ok(())
-        }
-        else
-        {
-            EngineError::new("Could not push state into stack")
-        }
-    }
-  */  
+
     pub fn push(&mut self, state: GameState)
     {
         self.stack.push(state);
@@ -335,6 +332,8 @@ impl GameStateStack
                   frame: &mut Frame,
                   gui_context: &mut Context)
     {
+
+	
         let first_block = self.iter()
             .rposition(|state| state.render_behavior == RenderBehavior::Blocking);
         let to_skip = match first_block
@@ -342,13 +341,18 @@ impl GameStateStack
             None => 0,
             Some(pos) => pos
         };
+
+
+	
         for state in self.iter_mut().skip(to_skip)
             .filter(|state| state.render_behavior != RenderBehavior::NoRender)
         {
 	    state.update_scene();
+
+	    // about 90% of the time spent
             state.scene.render(gr, ressources, frame);
 
-        // gui
+            // gui
             if let Some(gui) = state.gui
             {
                 let mut ui = gui_context.frame();
@@ -360,6 +364,7 @@ impl GameStateStack
                     .render(&mut frame.frame, draw_data)
                     .expect("Rendering failed GUI on frame");
             }
+
         }
     }
 
@@ -375,8 +380,11 @@ impl GameStateStack
         };
         for state in self.iter_mut().skip(to_skip)
         {
-            (state.logic)(state, devices);
+	    state.world.insert((*devices).clone());
 	    state.dispatcher.dispatch(&mut state.world);
+
+	    state.send_events();
+	    
         }
     }
 }
@@ -385,13 +393,45 @@ impl GameStateStack
 pub struct ProtoState
 {
     name: String,
-    with_physics: bool,
+    
     scene_builder: fn(&mut Game) -> Result<Scene, EngineError>,
     run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
-    run_logic: fn(&mut GameState, &DevicesState),
-    render_behavior: RenderBehavior,
-    logic_behavior: LogicBehavior,
+    init: fn(World, &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>),
 
-    init: fn(&mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
+    with_physics: bool, // can make a trait instead
+    render_behavior: RenderBehavior, // can make a trait instead
+    logic_behavior: LogicBehavior, // can make a trait instead
+
    
+}
+
+
+/// a ressource to send events
+#[derive(Debug, Default)]
+pub struct EventSender(Vec<GameEvent>);
+
+impl EventSender
+{
+    fn new() -> Self
+    {
+	Self(Vec::new())
+    }
+    pub fn push(&mut self, event: GameEvent)
+    {
+	self.0.push(event);
+    }
+
+    fn send(&mut self, proxy: &EventLoopProxy<GameEvent>)
+    {
+	self.0.drain(..).for_each(
+	    |event|
+	    match proxy.send_event(event)
+	    {
+		Err(_) => panic!("Cannot send user event: Event Loop terminated"),
+		_ => ()		
+	    }
+	)
+    }
+    
+    
 }

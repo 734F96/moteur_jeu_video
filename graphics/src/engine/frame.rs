@@ -4,7 +4,7 @@ use super::{Graphical, Params, Camera};
 use crate::ressource_handling::{Object, Material, Lights};
 use crate::misc::Similarity;
 
-
+use std::time::{Instant, Duration};
 
 /**
 Where the scene is being constructed.
@@ -34,8 +34,8 @@ impl Frame {
         obj: &Object,
         per_instance: &glium::VertexBuffer<Similarity>, // position
         camera: &Camera,
-        lights: &Lights
-    ) {
+        lights: &Lights)
+    {
         obj.data
             .iter()
             .for_each(|(group, program)|
@@ -73,20 +73,23 @@ impl Frame {
                 specular_exponent,
                 opacity,
             } => {
+		
+
                 /*
                 This is a bit ugly but necessary.
                 Creates the mipmap of the textures and also binds it.
                 We look forward to replace this by something cleaner (or safer).
+		Takes roughly 50% of time
                  */
 		unsafe {texture.generate_mipmaps();}
-                
+
                 self.frame
                     .draw(
                         (vertex_buffer, per_instance.per_instance().unwrap()),
                         indices,
                         program,
                         &uniform! {
-                            texture: texture,
+                            tex: texture,
                             view_matrix: camera.get_view_matrix(),
                             perspective_matrix: camera.get_perspective_matrix(),
 
@@ -95,6 +98,7 @@ impl Frame {
                             opacity: *opacity,
                             
 
+			    n_lights: lights.n,
                             lights_type: &lights.light_type,
                             lights_intensity: &lights.intensity,
                             lights_pos: &lights.position,
@@ -129,7 +133,7 @@ impl Frame {
                                    emission: *emission_color,
                                    opacity: *opacity,
 
-
+				   n_lights: lights.n,
                                    lights_type: &lights.light_type,
                                    lights_intensity: &lights.intensity,
                                    lights_pos: &lights.position,

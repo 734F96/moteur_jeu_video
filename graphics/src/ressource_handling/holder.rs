@@ -49,7 +49,7 @@ impl Holder<Wavefront>
     ) -> Result<Vec<Group>, EngineError> {
         match self.get(file) {
             Some(wavefront) => wavefront.get_object(model_name.to_string()),
-            None => EngineError::new("file doesn't exist!"),
+            None => EngineError::new(&format!("file {} doesn't exist!", file)),
         }
     }
 
@@ -81,15 +81,15 @@ impl Holder<Wavefront>
         disp: &Display,
         filename: &str,
         ressources_path: &Path,
-    ) -> Result<(), &'static str> {
+    ) -> Result<(), EngineError> {
         let path_to_wavefront = Path::new(filename);
         let stem = match path_to_wavefront.file_stem() {
             Some(st) => st,
-            _ => return Err("cannot parse stem, is the address empty?"),
+            _ => return EngineError::new("cannot parse stem, is the address empty?"),
         };
         let stem = match stem.to_str() {
             Some(st) => st,
-            _ => return Err("cannot parse stem, is the address empty?"),
+            _ => return EngineError::new("cannot parse stem, is the address empty?"),
         };
         let stem = stem.to_string();
         let path_to_mtl = path_to_wavefront.with_extension("mtl");
@@ -99,7 +99,7 @@ impl Holder<Wavefront>
 
         self.insert(
             stem.clone(),
-            Wavefront::new(disp, path_to_wavefront, &path_to_mtl, ressources_path),
+            Wavefront::new(disp, path_to_wavefront, &path_to_mtl, ressources_path)?,
         );
         Ok(())
     }
@@ -108,12 +108,12 @@ impl Holder<Wavefront>
     Remove a file from the graphical memory.
     (bad idea for now)
      */ 
-    pub fn unload(&mut self, filename: &str) -> Result<(), &'static str> {
+    pub fn unload(&mut self, filename: &str) -> Result<(), EngineError> {
         if self.0.contains_key(filename) {
             self.0.remove(filename);
             return Ok(());
         } else {
-            return Err("file not found");
+            return EngineError::new("file not found");
         }
     }
    
