@@ -7,8 +7,6 @@ use nphysics3d::world::{DefaultMechanicalWorld, DefaultGeometricalWorld};
 use nphysics3d::object::{DefaultBodySet, DefaultColliderSet};
 use nalgebra::Vector3;
 
-// RigidBodyDesc, ColliderDesc, BodyPartHandle
-
 use nphysics3d::object::{RigidBodyDesc, BodyPartHandle, ColliderDesc};
 use nphysics3d::algebra::Velocity3;
 use nphysics3d::material::{MaterialHandle, BasicMaterial};
@@ -25,7 +23,6 @@ pub struct Physics{
     pub colliders: DefaultColliderSet<f32>,
     pub joint_constraints: DefaultJointConstraintSet<f32>,
     pub force_generators: DefaultForceGeneratorSet<f32>,
-    pub col_tab: Vec<generational_arena::Index>,
 }
 
 impl Default for Physics
@@ -45,17 +42,13 @@ impl Default for Physics
         // Where we store all the Collider object
         let colliders = DefaultColliderSet::<f32>::new();
 
-        // Where we store the handle of every collider so we can get their position and material later (used for testing only at the moment)
-        let col_tab = Vec::new();
-
         Physics::new(
 	    mechanical_world,
 	    geometrical_world,
 	    bodies,
 	    colliders,
 	    joint_constraints,
-	    force_generators,
-	    col_tab)
+	    force_generators)
 
     }
 }
@@ -67,8 +60,7 @@ impl Physics
         bodies: DefaultBodySet<f32>,
         colliders: DefaultColliderSet<f32>,
         joint_constraints: DefaultJointConstraintSet<f32>,
-        force_generators: DefaultForceGeneratorSet<f32>,
-        col_tab: Vec<generational_arena::Index>) -> Physics{
+        force_generators: DefaultForceGeneratorSet<f32>) -> Physics{
 
         let physics = Physics
 	{
@@ -77,8 +69,7 @@ impl Physics
             bodies: bodies,
             colliders: colliders,
             joint_constraints: joint_constraints,
-            force_generators: force_generators,
-            col_tab
+            force_generators: force_generators
 	};
 
         return physics;
@@ -99,14 +90,9 @@ impl Physics
         
     }
 
-/// Creates the RigidBody and Collider of every PhysicObject in the ObjSet given in parameter, store them in a ColliderSet and a Vector<Collider> and returns it
+/// Creates the RigidBody and Collider of the PhysicObject given in parameter, store them in a ColliderSet and a Vector<Collider> and returns it
     pub fn build_rigbd_col(&mut self, physic_object: &PhysicObject) -> generational_arena::Index
     {
-
-        // physics.bodies
-        // physics.collider
-        // physics.col_tab
-    
         let shape = process_shape(&physic_object.shape); // ShapeHandle object de ncollide
         
         // We create the RigidBody relative to the field rbdata of 'object'
@@ -115,7 +101,6 @@ impl Physics
         .rotation(physic_object.rbdata.rotation)
         .gravity_enabled(physic_object.rbdata.gravity_enabled)
 	    .status(physic_object.rbdata.bodystatus)
-	    //.status(nphysics3d::object::BodyStatus::Dynamic)
         .velocity(Velocity3::new(physic_object.rbdata.linear_velocity, physic_object.rbdata.angular_velocity))
         .linear_damping(physic_object.rbdata.linear_damping)
         .angular_damping(physic_object.rbdata.angular_damping)
@@ -124,7 +109,7 @@ impl Physics
         .angular_inertia(Matrix3::from_diagonal_element(physic_object.rbdata.angular_inertia))
         .mass(physic_object.rbdata.mass)
         .local_center_of_mass(physic_object.rbdata.local_center_of_mass)
-            .sleep_threshold(Some(physic_object.rbdata.sleep_threshold))
+        .sleep_threshold(Some(physic_object.rbdata.sleep_threshold))
         .kinematic_translations(physic_object.rbdata.kinematic_translations)
         .kinematic_rotations(physic_object.rbdata.kinematic_rotations)
         .user_data(physic_object.rbdata.user_data)
@@ -151,13 +136,7 @@ impl Physics
         
         // We add the Collider to the set of colliders
         let coll_handle = self.colliders.insert(collider);
-    
-        // Wa add the handle to the coll_tab
-	//        self.col_tab.push(coll_handle);
-	coll_handle
+        
+        coll_handle
     }
-    
-
-
-
 }

@@ -1,11 +1,10 @@
-use super::{GameEvent, Game, Model, Spatial, Lighting, PhysicComponent};
+use super::{GameEvent, Game, Model, Spatial, Lighting};
 use graphics::{Scene, Graphical, Frame, RessourcesHolder};
 use events_handling::DevicesState;
 use graphics::
 {
     glium::glutin::event_loop::EventLoopProxy,
     Similarity,
-    Lights,
     Camera
 };
 
@@ -14,18 +13,9 @@ use imgui_glium_renderer::Renderer;
 
 use base::EngineError;
 
-use physics::Physics;
+
 
 use std::collections::HashMap;
-
-use physics::nphysics3d::{
-    force_generator::DefaultForceGeneratorSet,
-    joint::DefaultJointConstraintSet,
-    world::{DefaultMechanicalWorld, DefaultGeometricalWorld}
-
-};
-use physics::make_objects;
-use graphics::nalgebra::Vector3;
 
 use rayon::iter::ParallelIterator;
 use rayon::iter::IntoParallelIterator;
@@ -39,8 +29,6 @@ use specs::
     join::Join,
     join::ParJoin
 };
-
-use std::time::{Instant, Duration};
 
 
 pub struct GameState
