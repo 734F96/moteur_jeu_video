@@ -100,10 +100,17 @@ fn render_gui(ui: &mut Ui, proxy: &EventLoopProxy<GameEvent>)
 
         ui.text(im_str!("Useless text"));
     });
+
+    use imgui::Slider;
+
+    let mut val = 0;
+
+    Slider::new(im_str!("Slider"), 0..=4)
+	.build(&ui, &mut val);
+
+
 }
-
-
-
+    
 fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
 {
     world.register::<Spatial>();

@@ -2,12 +2,15 @@ use std::path::Path;
 use glium::vertex::VertexBuffer;
 use std::sync::Arc;
 use std::path::PathBuf;
+use std::fs;
+
+
+use sounds::{SoundRessource};
 
 use super::{Material, Object, Wavefront, Holder, Tile, Group, Vertex, Register, Handle};
 use crate::engine::{ProgramId, Display, Params};
 
 use base::{Base, EngineError};
-
 
 /// Registers all the ressources.
 
@@ -23,7 +26,10 @@ pub struct RessourcesHolder {
     params: Holder<Arc<Params>>, // overkill
 
     /// All the renderable objects constructed from the other ressources
-    objects_register: Register<Object>
+    objects_register: Register<Object>,
+
+    /// All the soundsDatas
+    pub sounds_datas: Holder<SoundRessource>
 }
 
 impl RessourcesHolder {
@@ -36,6 +42,7 @@ impl RessourcesHolder {
             tiles: Holder::new(),
             params: Holder::new(),
 	    objects_register: Register::new(),
+            sounds_datas: Holder::new(),
         }.init()
     }
 
@@ -60,6 +67,36 @@ impl RessourcesHolder {
     {
         self.add_parameters(Params::new(), "scene");
         self.add_parameters(Params::new().always_top(), "foreground");
+
+        //load each sound in the sounds holder
+        let path_sounds = fs::read_dir("sounds/ressources").unwrap();
+        for path in path_sounds {
+             let path_=path.unwrap().path();
+	     let path_sound= path_.to_str();
+	     match path_sound {
+                None => {},
+		Some(path_sound) => { 
+                     let data= SoundRessource::new(path_sound);
+                     let name =path_.file_stem();
+                     match name {
+                        None =>{},
+                        Some(name)=>{ 
+                              let name_str= name.to_str();
+                              match name_str{
+                                   None => {},
+                                   Some(name_str) => {
+                                     let mut name_string=String::new();
+                                     name_string.push_str(name_str);
+                                      self.sounds_datas.insert(name_string,data);
+                                   }
+                              }
+                         } 
+                     }  			
+	         }
+	     }
+	}
+
+
         self
     }
     

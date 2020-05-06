@@ -17,7 +17,7 @@ physics = {path = "physics"}
 sounds = { path = "sounds" }
 rand = "*"
 movable="*"
-
+ears="*"
 imgui = "*"
 image = "*"
 imgui-sys = "*"

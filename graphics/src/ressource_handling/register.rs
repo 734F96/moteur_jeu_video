@@ -120,6 +120,13 @@ impl<T> Register<T>
 	let index = handle.index;
 	unsafe{self.storage.get_unchecked(index)}
     }
+
+    pub fn get_mut(&mut self, handle: Handle<T>) -> &mut T
+    {
+	let index = handle.index;
+	unsafe{self.storage.get_unchecked_mut(index)}
+    }
+
     
 }
 

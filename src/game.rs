@@ -1,7 +1,7 @@
 use graphics::Graphical;
 
 use graphics::RessourcesHolder;
-use graphics::Scene;
+use graphics::{Scene} ;
 use events_handling::{DevicesState, Event};
 
 use base::{EngineError, Base};
@@ -13,17 +13,18 @@ use glutin::event_loop::{EventLoop, ControlFlow, EventLoopProxy};
 use super::{GameState, GameStateStack, RenderBehavior, LogicBehavior, GameEvent};
 
 use std::cell::RefCell;
-
 use movable::Movable;
 
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 use imgui_glium_renderer::Renderer;
 use imgui::{Context, Ui};
 
-use sounds::{OneSound};
+use sounds::{OneSound,SoundRessource};
 
 use specs::{Dispatcher, World};
-use std::thread;
+
+
+use std::collections::HashMap;
 
 
 
@@ -31,7 +32,7 @@ use std::thread;
 /**
 The Game structure
 It owns everything
-*/
+ */
 pub struct Game
 {
     pub graphic_engine: Graphical,
@@ -42,9 +43,14 @@ pub struct Game
     pub event_loop_proxy: EventLoopProxy<GameEvent>,
     pub states: RefCell<GameStateStack>,
 
+    pub sounds_played :HashMap<String,OneSound>,
+
+    vol: f32,
+
     gui_context: Context,
     gui_renderer: Renderer,
     gui_platform: WinitPlatform,
+    
 
 }
 
@@ -89,7 +95,8 @@ impl Game
             states: RefCell::new(GameStateStack::new()),
             event_loop: movable,
             event_loop_proxy: proxy,
-            
+            sounds_played: HashMap::new(),
+            vol:0.0,
 
             gui_context: imgui,
             gui_renderer: renderer,
@@ -125,7 +132,7 @@ impl Game
         self.states.get_mut()
             .loaded.insert(name.to_string(), state);
 	Ok(())
-	
+	    
     }
     
 
@@ -178,126 +185,250 @@ impl Game
     }
 
 
-
-
-    fn play_sound(&self, music_path: String, position: Option<[f32; 3]>)
+    //play sound entirely
+    fn play_sound(&mut self, name: String, position: Option<[f32; 3]>)
     {
-        let thread_music= thread::spawn(move || {
-	     let mut music = OneSound:: new(music_path.as_str());
+	let music_data =self.ressources.sounds_datas.get(name.as_str());
+	
+	match music_data
+	{
+            None => (),
+            Some(music_data) =>
+	    {
+                let music = OneSound::new_from_data(
+		    SoundRessource::new_from_data(music_data)
+		);
+		
+                match music
+		{
+                    Ok(mut music) =>
+		    {
+                        let mut v = self.vol;
+                        while v > 0.0
+                        {
+                            music.up_volume();
+                            v =v-1.0;
+                        }
 
-             match position{
-		None => {},
-		Some(position) => music.set_position(position)
-             }
-    	     music.play_all();       
-        });
-    }    
+			while v < 0.0
+                        {
+                            music.down_volume();
+                            v = v + 1.0;
+                        }
+                        match position{
+	                    None => (),
+	                    Some(position) => music.give_position(position)
+                        };
 
-    fn play_sound_time_limit(&self,music_path: String, duration: Option<f32>,position: Option<[f32; 3]>)
-    {
-        let thread_music= thread::spawn(move || {
-	     let mut music = OneSound:: new(music_path.as_str());
-
-              match position{
-		None => {},
-		Some(position) => music.set_position(position)
-	      }
-	      match duration{
-                 Some(duration) => music.play_time_limit(duration),
-                 None => music.play_nolimit()
-              }
- 
-        });
-    } 
-
-
-    // maybe user defined
-    fn handle_event(&mut self, event: Event<GameEvent>) -> ControlFlow
-    {
-//        let mut devices = self.devices.borrow_mut();
-        match event {
-            Event::KeyPressed(key) => {self.devices.get_mut().keyboard_pressed.insert(key);},
-            Event::KeyReleased(key) => {self.devices.get_mut().keyboard_continuous.remove(&key);},
-            Event::ButtonPressed(button) => {self.devices.get_mut().mouse_state.insert(button);},
-            Event::ButtonReleased(button) => {self.devices.get_mut().mouse_state.remove(&button);},
-            Event::MouseMove(x, y) => {
-                let mut devices = self.devices.get_mut();
-                devices.mouse_move = (devices.mouse_move.0+x, devices.mouse_move.1+y);
-            },
-            Event::ScrollMouse(x, y) => {
-                let mut devices = self.devices.get_mut();
-                    devices.mouse_scroll = (devices.mouse_scroll.0+x, devices.mouse_scroll.1+y);
-            },
-            Event::GameEvent(game_event) =>
-            {
-                match game_event
-                {
-                    GameEvent::QuitRequested => return ControlFlow::Exit,
-                    GameEvent::Pop(n) => self.pop_state(n),
-                    GameEvent::Push(state_name) =>
-                    {
-                        self.push_state(
-                            &state_name
-                        ).unwrap();
+		        music.play_all();
+                        //add in the hashmap of played_sound
+                        let mut name_music=name.clone();
+                        while self.sounds_played.contains_key(&name_music)
+                        {name_music.push('1')}
+                        self.sounds_played.insert(name_music,music);
                     },
-                    GameEvent::PlaySound(music_path,position) => self.play_sound(music_path,position),
-    		    GameEvent::PlaySoundTimeLimit(music_path,duration,position) => self.play_sound_time_limit(music_path,duration,position)
+                    Err(_e) => ()
                 }
             }
-            _ => ()
-        };
-        ControlFlow::Poll
+	}      
+	
+    }    
 
-    }
 
-    /// Initialize and runs the game
-    pub fn run(mut self, fps: u64) -> Result<(), base::EngineError>
+    // play sound with time limit
+    // duration == none -> play the sound to infinity -> set the end fielf of OneSound to -2
+    // duration == some -> play the sound duration sec
+    fn play_sound_time_limit(&mut self,name: String, duration: Option<f32>,position: Option<[f32; 3]>)
     {
-	
-        let mut now = std::time::Instant::now();
-        let mut render_date = std::time::Instant::now();
 
-	let delay = std::time::Duration::from_millis(1000/fps);
+	let music_data =self.ressources.sounds_datas.get(name.as_str());
+	match music_data{
+            None => {},
+            Some(music_data) => {
+                let music = OneSound::new_from_data(SoundRessource::new_from_data(music_data));
+                match music{
+                    Ok(mut music) => {
+                        let mut v= self.vol;
+                        while v>0.0
+                        {
+                            music.up_volume();
+                            v=v-1.0;
+                        }
 
-	
-        self.event_loop.consume()
-            .run(move |event, _, control_flow|
-                 {
-                     // gui events
-                     {
-                         let gl_window = self.graphic_engine.display.display.gl_window();
-                         self.gui_platform.handle_event(
-                             self.gui_context.io_mut(),
-                             gl_window.window(),
-                             &event);
-                     }
-		     
-                     
-                     // inputs
-                     if let Some(ev) = Event::parse_relevant(event)
-                     {
-                         *control_flow = self.handle_event(ev);
-                     }
-                     
+			while v<0.0
+                        {
+                            music.down_volume();
+                            v=v+1.0;
+                        }
+                        match position{
+	                    None => {},
+		            Some(position) => music.give_position(position)
+	                } 
+			
+                        match duration{
+                            Some(duration) => { 
+                                music.set_end(duration);
+                                music.play_all(); 
+                            },
+                            None => {
+				music.set_end(-2.);
+                                music.play_all();}
+                        }
+                        //add in the hashmap of played_sound
+                        let mut name_music=name.clone();
+                        while self.sounds_played.contains_key(&name_music)
+                        {name_music.push('1')}
+                        self.sounds_played.insert(name_music,music);
+                    },
+                    Err(_e)=> {}     
+                }
+            }
+	} 
 
-                     // render
-                     now = std::time::Instant::now();
-                     if render_date < now
-                     {			 
-			 self.states.borrow_mut()
-                             .logic(&self.devices.borrow());
-                         {
-                             let mut devices = self.devices.borrow_mut();
-                             devices.clear();
-                         }
-			 
-			 // takes about 99% of the time
-                         self.render();
-			 
-                         render_date = now + delay;
-                     }
-		     
-                 });
+
     }
-    
-}
+
+
+	// down the volume of all played sounds
+	fn down_volume(&mut self)
+	{
+	    self.vol=self.vol-1.0;
+	    for (_name,sound) in self.sounds_played.iter_mut()
+	    {
+		sound.down_volume();
+	    }
+	} 
+
+	// up the volume of all played sound
+	fn up_volume(&mut self)
+	{
+	    self.vol=self.vol+1.0;
+	    for (_name,sound) in self.sounds_played.iter_mut()
+	    {
+		sound.up_volume();
+	    }
+	}
+
+
+	// maybe user defined
+	fn handle_event(&mut self, event: Event<GameEvent>) -> ControlFlow
+	{
+	    //        let mut devices = self.devices.borrow_mut();
+            match event {
+		Event::KeyPressed(key) => {self.devices.get_mut().keyboard_pressed.insert(key);},
+		Event::KeyReleased(key) => {self.devices.get_mut().keyboard_continuous.remove(&key);},
+		Event::ButtonPressed(button) => {self.devices.get_mut().mouse_state.insert(button);},
+		Event::ButtonReleased(button) => {self.devices.get_mut().mouse_state.remove(&button);},
+		Event::MouseMove(x, y) => {
+                    let mut devices = self.devices.get_mut();
+                    devices.mouse_move = (devices.mouse_move.0+x, devices.mouse_move.1+y);
+		},
+		Event::ScrollMouse(x, y) => {
+                    let mut devices = self.devices.get_mut();
+                    devices.mouse_scroll = (devices.mouse_scroll.0+x, devices.mouse_scroll.1+y);
+		},
+		Event::GameEvent(game_event) =>
+		{
+                    match game_event
+                    {
+			GameEvent::QuitRequested => return ControlFlow::Exit,
+			GameEvent::Pop(n) => self.pop_state(n),
+			GameEvent::Push(state_name) =>
+			{
+                            self.push_state(
+				&state_name
+                            ).unwrap();
+			},
+
+			GameEvent::PlaySound(name,position) => self.play_sound(name,position),
+    			GameEvent::PlaySoundTimeLimit(name,duration,position) => self.play_sound_time_limit(name,duration,position),
+			GameEvent::DownVolume()=>self.down_volume(),
+			GameEvent::UpVolume()=>self.up_volume()
+
+                    }
+		}
+		_ => ()
+            };
+            ControlFlow::Poll
+
+	}
+
+	/// Initialize and runs the game
+	pub fn run(mut self, fps: u64) -> Result<(), base::EngineError>
+	{
+	    
+            let mut now = std::time::Instant::now();
+            let mut render_date = std::time::Instant::now();
+
+	    let delay = std::time::Duration::from_millis(1000/fps);
+
+	    
+            self.event_loop.consume()
+		.run(move |event, _, control_flow|
+                     {
+			 // gui events
+			 {
+                             let gl_window = self.graphic_engine.display.display.gl_window();
+                             self.gui_platform.handle_event(
+				 self.gui_context.io_mut(),
+				 gl_window.window(),
+				 &event);
+			 }
+			 
+			 
+			 // inputs
+			 if let Some(ev) = Event::parse_relevant(event)
+			 {
+                             *control_flow = self.handle_event(ev);
+			 }
+			 
+
+			 // render
+			 now = std::time::Instant::now();
+			 if render_date < now
+			 {			 
+			     self.states.borrow_mut()
+				 .logic(&self.devices.borrow());
+                             {
+				 let mut devices = self.devices.borrow_mut();
+				 devices.clear();
+                             }
+			     
+			     // takes about 99% of the time
+                             self.render();
+			     
+                             render_date = now + delay;
+			 }
+			 
+			 let name_to_pop : Vec<_> = self.sounds_played.iter()
+			     .filter
+			     ( |(_name,sound)|
+				  (sound.end == (-1. as f32) && !sound.is_playing()) || 
+				  (sound.end == (-2. as f32) && !sound.is_playing()) ||
+				  (sound.end >0.0 && sound.end == sound.start.elapsed().as_secs() as f32)
+			     ).map(|(name,_sound)| name.clone())
+			     .collect();
+			 
+			 for name in name_to_pop {
+                             let sound = self.sounds_played.get_mut(&name);
+                             match sound{
+				 None => {},
+				 Some(sound) => {
+                                     if sound.end ==(-2. as f32)
+                                     {sound.play_all();}
+                                     else
+                                     {
+					 if sound.end >0.0  
+					 {sound.stop();}
+					 self.sounds_played.remove(&name);
+                                     }
+				 }
+                             }
+			 }
+			 
+                     });
+	    Ok(())
+	    
+	}
+    }
+
