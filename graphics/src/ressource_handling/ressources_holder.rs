@@ -76,12 +76,12 @@ impl RessourcesHolder {
 	     match path_sound {
                 None => {},
 		Some(path_sound) => { 
-                     let mut data= SoundRessource::new(path_sound);
+                     let data= SoundRessource::new(path_sound);
                      let name =path_.file_stem();
                      match name {
                         None =>{},
                         Some(name)=>{ 
-                              let mut name_str= name.to_str();
+                              let name_str= name.to_str();
                               match name_str{
                                    None => {},
                                    Some(name_str) => {

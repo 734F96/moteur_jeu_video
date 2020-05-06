@@ -1,4 +1,3 @@
-use sounds::{SoundRessource};
 
 #[derive(Debug)]
 pub enum GameEvent
@@ -6,6 +5,8 @@ pub enum GameEvent
     QuitRequested,
     Pop(usize),
     Push(String),
-    PlaySound(SoundRessource,String,Option<[f32; 3]>),
-    PlaySound_timeLimit(SoundRessource,String,Option<f32>,Option<[f32; 3]>)
+    PlaySound(String,Option<[f32; 3]>),
+    PlaySoundTimeLimit(String,Option<f32>,Option<[f32; 3]>),
+    DownVolume(),
+    UpVolume()
 }

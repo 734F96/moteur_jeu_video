@@ -1,7 +1,7 @@
 use graphics::Graphical;
 
 use graphics::RessourcesHolder;
-use graphics::{Scene, Handle} ;
+use graphics::{Scene} ;
 use events_handling::{DevicesState, Event};
 
 use base::{EngineError, Base};
@@ -25,9 +25,7 @@ use specs::{Dispatcher, World};
 
 use std::collections::HashMap;
 
-use std::thread;
 
-use std::time::{Instant, Duration};
 
 
 
@@ -45,11 +43,14 @@ pub struct Game
     event_loop: Movable<EventLoop<GameEvent>>,
     pub event_loop_proxy: EventLoopProxy<GameEvent>,
     pub states: RefCell<GameStateStack>,
+
     pub sounds_played :HashMap<String,OneSound>,
+    vol: f32,
 
     gui_context: Context,
     gui_renderer: Renderer,
     gui_platform: WinitPlatform,
+   
 
 }
 
@@ -95,7 +96,7 @@ impl Game
             event_loop: movable,
             event_loop_proxy: proxy,
             sounds_played: HashMap::new(),
-            
+            vol:0.0,
 
             gui_context: imgui,
             gui_renderer: renderer,
@@ -186,54 +187,119 @@ impl Game
     }
 
 
-
-
-    fn play_sound(&mut self, music_data: SoundRessource,name: String, position: Option<[f32; 3]>)
+    //play sound entirely
+    fn play_sound(&mut self, name: String, position: Option<[f32; 3]>)
     {
-       let mut music = OneSound::new_from_data(music_data);
-       match music {
-             Ok(mut music) => {
-                  match position{
-	                None => {},
-	                Some(position) => music.give_position(position)
-                  }
+       let music_data =self.ressources.sounds_datas.get(name.as_str());
+       match music_data{
+            None => {},
+            Some(music_data) => {
+                 let music = OneSound::new_from_data(SoundRessource::new_from_data(music_data));
+                 match music {
+                      Ok(mut music) => {
+                            let mut v= self.vol;
+                            while v>0.0
+                            {
+                                music.up_volume();
+                               v=v-1.0;
+                            }
 
-		  music.play_all();
-                  //add in the hashmap of played_sound
-                  self.sounds_played.insert(name,music);
-                   
-                   
-             },
-             Err(e) => {}
-       }
+			    while v<0.0
+                            {
+                                music.down_volume();
+                                v=v+1.0;
+                            }
+                            match position{
+	                           None => {},
+	                           Some(position) => music.give_position(position)
+                             }
+
+		             music.play_all();
+                             //add in the hashmap of played_sound
+                             let mut name_music=name.clone();
+                             while self.sounds_played.contains_key(&name_music)
+                                 {name_music.push('1')}
+                             self.sounds_played.insert(name_music,music);
+                       },
+                      Err(_e) => {}
+                }
+            }
+       }      
       
     }    
 
-    fn play_sound_timeLimit(&mut self,music_data: SoundRessource,name: String, duration: Option<f32>,position: Option<[f32; 3]>){
+    // play sound with time limit
+    // duration == none -> play the sound to infinity -> set the end fielf of OneSound to -2
+    // duration == some -> play the sound duration sec
+    fn play_sound_time_limit(&mut self,name: String, duration: Option<f32>,position: Option<[f32; 3]>){
 
-       let mut music = OneSound::new_from_data(music_data);
-       match music{
-             Ok(mut music) => {
-                   match position{
-	                  None => {},
-		          Some(position) => music.give_position(position)
-	            } 
+       let music_data =self.ressources.sounds_datas.get(name.as_str());
+       match music_data{
+            None => {},
+            Some(music_data) => {
+                 let music = OneSound::new_from_data(SoundRessource::new_from_data(music_data));
+                 match music{
+                       Ok(mut music) => {
+                           let mut v= self.vol;
+                           while v>0.0
+                           {
+                               music.up_volume();
+                              v=v-1.0;
+                           }
 
-                    
-
-                   match duration{
-                          Some(duration) => music.play_time_limit(duration),
-                          None => music.play_nolimit()
-                   }
-                   //add in the hashmap of played_sound
-                   self.sounds_played.insert(name,music);
-            },
-            Err(e)=> {}
-
-       }
-        
+			   while v<0.0
+                           {
+                               music.down_volume();
+                               v=v+1.0;
+                           }
+                             match position{
+	                           None => {},
+		                   Some(position) => music.give_position(position)
+	                     } 
+			     
+                             match duration{
+                                   Some(duration) => { 
+                                            music.set_end(duration);
+                                            music.play_all(); 
+                                   },
+                                   None => {
+					    music.set_end(-2.);
+                                            music.play_all();}
+                             }
+                            //add in the hashmap of played_sound
+                            let mut name_music=name.clone();
+                            while self.sounds_played.contains_key(&name_music)
+                                {name_music.push('1')}
+                            self.sounds_played.insert(name_music,music);
+                     },
+                     Err(_e)=> {}     
+                }
+            }
+       } 
 
     } 
+
+
+
+   // down the volume of all played sounds
+   fn down_volume(&mut self)
+   {
+      self.vol=self.vol-1.0;
+      for (_name,sound) in self.sounds_played.iter_mut()
+      {
+         sound.down_volume();
+      }
+   } 
+
+   // up the volume of all played sound
+   fn up_volume(&mut self)
+   {
+      self.vol=self.vol+1.0;
+      for (_name,sound) in self.sounds_played.iter_mut()
+      {
+         sound.up_volume();
+      }
+   }
 
 
     // maybe user defined
@@ -265,8 +331,10 @@ impl Game
                             &state_name
                         ).unwrap();
                     },
-                    GameEvent::PlaySound(music_data,name,position) => self.play_sound(music_data,name,position),
-    		    GameEvent::PlaySound_timeLimit(music_data,name,duration,position) => self.play_sound_timeLimit(music_data,name,duration,position)
+                    GameEvent::PlaySound(name,position) => self.play_sound(name,position),
+    		    GameEvent::PlaySoundTimeLimit(name,duration,position) => self.play_sound_time_limit(name,duration,position),
+                    GameEvent::DownVolume()=>self.down_volume(),
+                    GameEvent::UpVolume()=>self.up_volume()
                 }
             }
             _ => ()
@@ -321,6 +389,32 @@ impl Game
 			 
                          render_date = now + delay;
                      }
+                 
+                     let name_to_pop : Vec<_> = self.sounds_played.iter().filter(|(_name,sound)|
+                     (sound.end == (-1. as f32) && !sound.is_playing()) || 
+                     (sound.end == (-2. as f32) && !sound.is_playing()) ||
+                     (sound.end >0.0 && sound.end == sound.start.elapsed().as_secs() as f32)
+                     ).map(|(name,_sound)| name.clone()).collect();
+                      
+		    for name in name_to_pop {
+                         let sound = self.sounds_played.get_mut(&name);
+                         match sound{
+                            None => {},
+                            Some(sound) => {
+                                 if sound.end ==(-2. as f32)
+                                 {sound.play_all();}
+                                 else
+                                 {
+                                    if sound.end >0.0  
+                                    {sound.stop();}
+                                    self.sounds_played.remove(&name);
+                                 }
+                            }
+                         }
+                    }
+                
+
+
 		     
                  });
     }

@@ -323,6 +323,9 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 	.with(EventSendingSystem, "event sending", &[])
 	.build();
     
+    {let mut sender=world.write_resource::<EventSender>();
+    sender.push(GameEvent::PlaySoundTimeLimit("theme_western02".to_string(),None,None));}
+
     (world, dispatcher)
 }
 
@@ -382,6 +385,7 @@ impl<'a> System<'a> for EventSendingSystem
 	if devices.key_pressed(Key::Escape) {
             sender.push(GameEvent::Push("menu state".to_string()));
 	}
+       
 
     }
 }

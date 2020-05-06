@@ -36,3 +36,4 @@ engine_error_from!(image::error::ImageError);
 engine_error_from!(glium::texture::TextureCreationError);
 engine_error_from!(glium::ProgramCreationError);
 engine_error_from!(&str);
+engine_error_from!(String);
