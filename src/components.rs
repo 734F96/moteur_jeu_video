@@ -1,3 +1,4 @@
+
 use specs::
 {
     Component,
@@ -8,10 +9,8 @@ use graphics::
     Object,
     Handle,
     nalgebra::Vector3,
-    glium::glutin::event_loop::EventLoopProxy
 };
 
-use super::GameEvent;
 
 
 
@@ -49,11 +48,29 @@ impl Component for Lighting
 }
 
 
-/// The indice of the physical object
-#[derive(Debug, Clone, Copy)]
-pub struct PhysicId(pub usize);
 
-impl Component for PhysicId
+use physics::ShapeType;
+
+/// The indice of the physical object
+#[derive(Clone)]
+pub struct PhysicComponent
+{
+    pub collider_id: physics::generational_arena::Index,
+    pub shape: ShapeType
+}
+
+impl Component for PhysicComponent
 {
     type Storage = DenseVecStorage<Self>;
+}
+
+
+use std::fmt;
+
+impl fmt::Debug for PhysicComponent
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
+    {
+	write!(f, "PhysicComponent{{collider_id: {:?}, shape_handle:NOTFORMATABLE}}", self.collider_id)
+    }
 }

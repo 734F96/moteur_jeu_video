@@ -1,10 +1,8 @@
 use glium::{Surface, uniform};
 
 use super::{Graphical, Params, Camera};
-use crate::ressource_handling::{Object, Material, Lights};
+use crate::ressource_handling::{Object, Material, Lights, Vertex};
 use crate::misc::Similarity;
-
-use std::time::{Instant, Duration};
 
 /**
 Where the scene is being constructed.
@@ -56,7 +54,7 @@ impl Frame {
     /// Draws a group of Object (part of the Object) in the Frame, called by fn draw, with a specific material and program
     pub fn draw_group(
         &mut self,
-        vertex_buffer: &glium::vertex::VertexBufferAny,
+        vertex_buffer: &glium::vertex::VertexBuffer<Vertex>,
         per_instance: &glium::VertexBuffer<Similarity>,
         material: &Material,
 	program: &glium::Program,
@@ -93,7 +91,7 @@ impl Frame {
                             view_matrix: camera.get_view_matrix(),
                             perspective_matrix: camera.get_perspective_matrix(),
 
-                            specular_color: *specular_color,
+                            material_specular: *specular_color,
                             specular_exponent: *specular_exponent,
                             opacity: *opacity,
                             

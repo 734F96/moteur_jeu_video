@@ -195,8 +195,7 @@ impl Wavefront {
                 groups.push(Group {
                     vertexes: Arc::new(
                         VertexBuffer::new(&disp.display, &mesh)
-                            .unwrap()
-                            .into()),
+                            .unwrap()),
                     material: mat,
                     
                 });

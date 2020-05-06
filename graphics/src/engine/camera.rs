@@ -1,8 +1,8 @@
-use nalgebra_glm::{look_at, rotate_x_vec3, rotate_y_vec3, rotate_z_vec3, vec3, normalize};
-use nalgebra::{Matrix3, Vector3, Perspective3};
+use nalgebra_glm::{look_at, vec3, normalize};
+use nalgebra::{Vector3, Perspective3};
 
 use super::Graphical;
-use std::f32::consts::{PI, FRAC_PI_2, FRAC_PI_4};
+use std::f32::consts::{PI, FRAC_PI_2};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Projection
@@ -20,10 +20,10 @@ A simple camera
 pub struct Camera {
     pub h_angular: f32, // theta
     pub v_angular: f32, // phi
-    position: Vector3<f32>,
-    up: Vector3<f32>,
-    forward: Vector3<f32>,
-    side: Vector3<f32>,
+    pub position: Vector3<f32>,
+    pub up: Vector3<f32>,
+    pub forward: Vector3<f32>,
+    pub side: Vector3<f32>,
     aspect_ratio: f32,
     fov :f32,
     projection : Projection

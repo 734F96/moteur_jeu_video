@@ -4,7 +4,7 @@ use ncollide3d::shape::ShapeHandle;
 
 
 // We implement the Clone trait to the structure
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Capsule
 {
     pub half_height: f32,

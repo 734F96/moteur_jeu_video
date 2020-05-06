@@ -13,7 +13,9 @@ use specs::
     System,
     ReadStorage,
     WriteStorage,
-    Join
+    Join,
+    Component,
+    NullStorage
 };
 
 use moteur_jeu_video::
@@ -21,7 +23,7 @@ use moteur_jeu_video::
     Spatial,
     Model,
     Lighting,
-    PhysicId,
+    PhysicComponent,
     EventSender
 };
 
@@ -31,9 +33,8 @@ use graphics::
     RessourcesHolder
 };
 
-use physics::Physics;
+use physics::{Physics, make_trimesh};
 
-use nalgebra::{Translation, Rotation};
 
 
 fn make_main_scene(
@@ -46,7 +47,15 @@ fn make_main_scene(
 
     holder.load_wavefront(disp, "transparent_sphere.obj", &ressources_path)?;
 
-    holder.load_wavefront(disp, "saloon.obj", &ressources_path)?;
+    holder.load_wavefront(disp, "candle.obj", &ressources_path)?;
+
+    holder.load_wavefront(disp, "chandelier.obj", &ressources_path)?;
+
+    holder.load_wavefront(disp, "teto.obj", &ressources_path)?;
+
+    holder.load_wavefront(disp, "all_objects_saloon.obj", &ressources_path)?;
+    
+    /*holder.load_wavefront(disp, "saloon.obj", &ressources_path)?; //sol
     holder.load_wavefront(disp, "porte_chambre.obj", &ressources_path)?;
     holder.load_wavefront(disp, "porte_entree.obj", &ressources_path)?;
     holder.load_wavefront(disp, "table.obj", &ressources_path)?;
@@ -54,14 +63,14 @@ fn make_main_scene(
     holder.load_wavefront(disp, "chaise.obj", &ressources_path)?;
     holder.load_wavefront(disp, "tabourets.obj", &ressources_path)?;
     holder.load_wavefront(disp, "verres.obj", &ressources_path)?;
-    holder.load_wavefront(disp, "bouteille.obj", &ressources_path)?;
-    holder.load_wavefront(disp, "teto.obj", &ressources_path)?;
+    holder.load_wavefront(disp, "bouteille.obj", &ressources_path)?;*/
+
 
     
 
     holder.add_parameters(Params::new().with_transparency(true), "Sphere");
 
-    let mut scene = Scene::new(&disp);
+    let scene = Scene::new(&disp);
 
 
     Ok(scene)
@@ -74,163 +83,208 @@ fn make_menu_scene(
 {
     let disp = &game.graphic_engine.display;
     
-    let mut scene = Scene::new(&disp);
+    let scene = Scene::new(&disp);
 
     Ok(scene)
 }
 
 
 
-fn game_logic(game_state: &mut GameState,
-              devices: &DevicesState)
-{
-/*
-    ///////////////////
-    // #################################################################################
-    let mut physics = game_state.physics.as_mut().unwrap();
-    let mut i = 0;
-    physics.run();
-    for object in game_state.scene.objects.iter_mut() {
-        for similarity in object.1.iter_mut() {
-            let homogenous = physics
-                .colliders
-                .get(physics.col_tab[i])
-                .unwrap()
-                .position()
-                .to_homogeneous();
-            let (_, _, scale) = similarity.deconstruct();
-            similarity.world_transformation = *homogenous.as_ref();
-            let (tra, rot, _) = similarity.deconstruct();
-            *similarity = Similarity::new(tra, rot, scale);
-            i += 1;
-        }
-    }
-    // #################################################################################
-*/
-
-
-}
-
-
 fn render_gui(ui: &mut Ui, proxy: &EventLoopProxy<GameEvent>)
 {
     Window::new(im_str!("Pause Menu"))
-        .size([300.0, 110.0], Condition::FirstUseEver)
+        .size([600.0, 400.0], Condition::FirstUseEver)
         .movable(false)
         .no_decoration()
-        .build(&ui, || {
-            if ui.button(im_str!("QUIT"), [60.0, 36.0])
+        .build(&ui, || {            
+            ui.same_line(275.0);
+            ui.text(im_str!("Game menu"));
+            ui.dummy([0.0, 5.0]);
+            ui.new_line();
+            ui.same_line(125.0);
+            if ui.button(im_str!("Back to the game"), [350.0, 36.0])
             {
-                proxy.send_event(GameEvent::QuitRequested);
+                proxy.send_event(GameEvent::Pop(1)).unwrap();
             };
+            ui.dummy([0.0, 5.0]);
+            ui.new_line();
+            ui.same_line(125.0);
+            if ui.button(im_str!("Click 1"), [150.0, 36.0])
+            {
+                proxy.send_event(GameEvent::QuitRequested).unwrap();
+            };
+            ui.same_line_with_spacing(275.0, 50.0);
+            
+            if ui.button(im_str!("Click 2"), [150.0, 36.0])
+            {
+                proxy.send_event(GameEvent::QuitRequested).unwrap();
+            };
+            ui.dummy([0.0, 5.0]);
+            ui.new_line();
+            ui.same_line(125.0);
+            if ui.button(im_str!("Click 3"), [150.0, 36.0])
+            {
+                proxy.send_event(GameEvent::QuitRequested).unwrap();
+            };
+            ui.same_line_with_spacing(275.0, 50.0);
+            
+            if ui.button(im_str!("Click 4"), [150.0, 36.0])
+            {
+                proxy.send_event(GameEvent::QuitRequested).unwrap();
+            };
+            ui.dummy([0.0, 5.0]);
+            ui.new_line();
+            ui.same_line(125.0);
+            if ui.button(im_str!("Quit the game"), [350.0, 36.0])
+            {
+                proxy.send_event(GameEvent::QuitRequested).unwrap();
+            };
+            
+           
 
-            ui.text(im_str!("Useless text"));
+            
         });
 
 }
-
 fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
 {
     world.register::<Spatial>();
     world.register::<Model>();
     world.register::<Lighting>();
+    world.register::<PhysicComponent>();
     world.insert(DevicesState::default());
+    world.register::<ControledComp>();
     world.insert(Camera::default());
 
+    let mut physics = Physics::default();
     
     let sphere = Model(ressources.get_object("transparent_sphere", "Sphere").unwrap());
+
     for _ in 0..50
     {
         let spatial = Spatial
         {
-                pos: vec3(rand::random(), rand::random(), rand::random()),
-                rot: vec3(rand::random(), rand::random(), rand::random()),
-                scale: 0.001
+            pos: vec3(rand::random(), rand::random(), rand::random()),
+            rot: vec3(rand::random(), rand::random(), rand::random()),
+            scale: 0.001
         };
+
         world.create_entity()
-            .with(spatial)
-            .with(sphere)
-            .build();
+        .with(spatial)
+        .with(sphere)
+        .build();
     }
 
-    let map_elements = Model(ressources.get_whole_content("saloon").unwrap());
+    let saloon = Model(ressources.get_object("all_objects_saloon", "saloon_SM_Bld_Saloon_01_27_SM_Bld_Saloon_01").unwrap());
     let zero = Spatial
     {
         pos: vec3(0., 0., 0.),
         rot: vec3(0., 0., 0.),
         scale: 1.
     };
+
     world.create_entity()
 	.with(zero)
-	.with(map_elements)
+	.with(saloon)
     .build();
     
-    let porte_chambre = Model(ressources.get_whole_content("porte_chambre").unwrap());
+    let sol = Model(ressources.get_object("all_objects_saloon", "sol_SM_Env_Sand_Ground_06_246_SM_Env_Sand_Ground_06").unwrap());
+    world.create_entity()
+	.with(zero)
+	.with(sol)
+    .build();
+
+    let porte_chambre = Model(ressources.get_object("all_objects_saloon", "porte_chambre_SM_Bld_Saloon_RoomDoor_01_273_SM_Bld_Saloon_RoomDoor_01.001").unwrap());
     let portes_chambres_positions = vec! [
-            Spatial { pos: vec3(-19.3022, 3.41965, -17.4815), rot: vec3(0., 0., 0.), scale: 1. },
-            Spatial { pos: vec3(-15.5513, 3.41965, -17.4815), rot: vec3(0., 0., 0.), scale: 1. },
-            Spatial { pos: vec3(-10.5668, 3.41965, -17.4815), rot: vec3(0., 0.6981, 0.), scale: 1. },
-            ];
+        Spatial { pos: vec3(-19.3022, 3.41965, -17.4815), rot: vec3(0., 0., 0.), scale: 1. },
+        Spatial { pos: vec3(-15.5513, 3.41965, -17.4815), rot: vec3(0., 0., 0.), scale: 1. },
+        Spatial { pos: vec3(-10.5668, 3.41965, -17.4815), rot: vec3(0., 0.6981, 0.), scale: 1. },
+    ];
+
     for position in portes_chambres_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(porte_chambre)
         .build();
     }
     
-    let porte_entree = Model(ressources.get_whole_content("porte_entree").unwrap());
+    let porte_entree = Model(ressources.get_object("all_objects_saloon", "porte_entree_SM_Bld_Saloon_Swinging_Doors_01_171_SM_Bld_Saloon_Swinging_Door").unwrap());
     let portes_entree_positions = vec! [
-            Spatial { pos: vec3(-9.64833, 1.46962, -8.76043), rot: vec3(0., 0.7853, 0.), scale: 1. },
-            Spatial { pos: vec3(-8.71997, 1.46962, -9.68726), rot: vec3(0., -2.3561, 0.), scale: 1.  },
-            ];
+        Spatial { pos: vec3(-9.64833, 1.46962, -8.76043), rot: vec3(0., 0.7853, 0.), scale: 1. },
+        Spatial { pos: vec3(-8.71997, 1.46962, -9.68726), rot: vec3(0., -2.3561, 0.), scale: 1.  },
+    ];
+
     for position in portes_entree_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(porte_entree)
         .build();
     }
 
-    let table = Model(ressources.get_whole_content("table").unwrap());
+    let table = Model(ressources.get_object("all_objects_saloon", "table_SM_Prop_Table_3_SM_Prop_Table_01").unwrap());
+    let obj_table = ressources.get_by_handle(table.0);
+    let table_trimesh = make_trimesh(&obj_table);
     let tables_positions = vec! [
         Spatial { pos: vec3(-14.6168, 0.333457, -12.643), rot: vec3(0., -0.33592, 0.), scale: 1. },
         Spatial { pos: vec3(-10.5536, 0.360777, -12.879), rot: vec3(0., 0.94535 , 0.), scale:1.  },
         Spatial { pos: vec3(-12.5902, 0.360777, -10.1726), rot: vec3(0., 0.28788 , 0.), scale:1.  },
-        ];
+    ];
+
     for position in tables_positions.iter()
-    {   world.create_entity()
+    {
+	let Spatial{pos, rot, scale} = position.clone();
+        let physic_obj_table = table_trimesh
+	    .make_static(pos, rot*std::f32::consts::PI, scale, true);
+	
+        let gen_index = physics.build_rigbd_col(&physic_obj_table);
+
+	let phy = PhysicComponent
+	{
+	    collider_id: gen_index,
+	    shape: table_trimesh.clone()
+	};
+	
+
+	world.create_entity()
         .with(*position)
-        .with(table)
+            .with(table)
+	    .with(phy)
         .build();
     }
  
-    let lit_double = Model(ressources.get_whole_content("lit_double").unwrap());
+    let lit_double = Model(ressources.get_object("all_objects_saloon", "lit_double_SM_Prop_Bed_01_281_SM_Prop_Bed_01").unwrap());
     let lits_doubles_positions = vec! [
         Spatial { pos: vec3(-13.8841, 3.27735, -19.7949), rot: vec3(0., -1.5707, 0.), scale:1. },
         Spatial { pos: vec3(-19.6265, 3.27735, -19.7949), rot: vec3(0., 1.5707 , 0.), scale:1.  },
         Spatial { pos: vec3(-11.0315, 3.27735, -19.7949), rot: vec3(0., 1.5707, 0.), scale:1. },
-        ];
+    ];
+
     for position in lits_doubles_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(lit_double)
         .build();
     }
   
-    let chaise = Model(ressources.get_whole_content("chaise").unwrap());
+    let chaise = Model(ressources.get_object("all_objects_saloon", "chaise_SM_Prop_Chair_01_327_SM_Prop_Chair_01").unwrap());
     let chaises_positions = vec! [
         Spatial { pos: vec3(-14.714, 0.325766, -11.6007), rot: vec3(0., 3.1415, 0.), scale:1. },
         Spatial { pos: vec3(-13.6238, 0.325766, -13.0231), rot: vec3(0., -1.22495, 0.), scale:1. },
         Spatial { pos: vec3(-15.3367, 0.325766, -13.4179), rot: vec3(0., 0.72583, 0.), scale:1. },
-        ];
+    ];
 
     for position in chaises_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(chaise)
         .build();
     }
 
-    let tabourets = Model(ressources.get_whole_content("tabourets").unwrap());
+    let tabourets = Model(ressources.get_object("all_objects_saloon", "tabouret_SM_Prop_Stool_Round_6_SM_Prop_Stool_Round_01.002").unwrap());
     let tabourets_positions = vec! [
         Spatial { pos: vec3(-9.5536, 0.360777, -12.879), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-11.5536, 0.360777, -12.879), rot: vec3(0., 0., 0.), scale:1. },
@@ -240,15 +294,17 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-13.5902, 0.360777, -10.1726), rot: vec3(0., 0., 0.),scale: 1. },
         Spatial { pos: vec3(-12.5902, 0.360777, -9.1726), rot: vec3(0., 0., 0.),scale: 1. },
         Spatial { pos: vec3(-12.5902, 0.360777, -11.1726), rot: vec3(0., 0., 0.), scale:1. },
-        ];
+    ];
+
     for position in tabourets_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(tabourets)
         .build();
     }
 
-    let verres = Model(ressources.get_whole_content("verres").unwrap());
+    let verres = Model(ressources.get_object("all_objects_saloon", "verres_SM_Prop_Cup_357_SM_Prop_Cup_01.002").unwrap());
     let verres_positions = vec! [
         Spatial { pos: vec3(-10.4869, 1.2616, -12.4206), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-11.0091, 1.2616, -13.0586), rot: vec3(0., 0., 0.), scale:1. },
@@ -257,15 +313,21 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-12.4423, 1.2616, -9.69564), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.9243, 1.2616, -9.96789), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.7213, 1.2616, -10.7131), rot: vec3(0., 0., 0.), scale:1. },
-        ];
+    ];
+
     for position in verres_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(verres)
         .build();
     }
 
-    let bouteille = Model(ressources.get_whole_content("bouteille").unwrap());
+    let bouteille = Model(ressources.get_object("all_objects_saloon", "bouteille_SM_Prop_Bottle_363_SM_Prop_Bottle_01").unwrap()); // Model
+    let obj_bouteille = ressources.get_by_handle(bouteille.0) ; // &Object
+    let bouteille_trimesh = make_trimesh(&obj_bouteille) ;
+
+    
     let bouteilles_positions = vec! [
         Spatial { pos: vec3(-14.1798, 1.47845, -15.2044), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-14.2691, 1.47845, -15.0703), rot: vec3(0., 0., 0.), scale:1. },
@@ -279,48 +341,85 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-12.5093, 1.2616, -10.2678), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.7289, 1.2616, -10.2876), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.613, 1.2616, -10.0908), rot: vec3(0., 0., 0.), scale:1. },
-        ];
+    ];
+
+    let light = Light::NonDirectional
+	(
+	    0.4,
+	    [1., 0.8, 0.2]
+	);
+
+    
     for position in bouteilles_positions.iter()
-    {   world.create_entity()
+    {
+	    let Spatial{pos, rot, scale} = position.clone();
+        let physic_obj_bouteille = bouteille_trimesh
+	    .make_dynamic(pos, rot, scale, true);
+	
+        let gen_index = physics.build_rigbd_col(&physic_obj_bouteille);
+
+	    let phy = PhysicComponent
+	    {
+	        collider_id: gen_index,
+	        shape: bouteille_trimesh.clone()
+	    };
+
+	
+         world.create_entity()
+            .with(*position)
+            .with(bouteille)
+	    .with(Lighting(light))
+	    .with(phy)
+        .build();
+    }
+    // Il faudra ajouter la lumière pour les deux suivants
+    let candle = Model(ressources.get_whole_content("candle").unwrap()); // Model
+    let candle_position = vec![ 
+        Spatial { pos: vec3(-14.6168, 1.2416, -12.643), rot: vec3(0., 0. , 0.), scale:0.05 }, 
+        Spatial { pos: vec3(-10.5536, 1.2416, -12.879), rot: vec3(0., 0. , 0.), scale:0.05  },
+        Spatial { pos: vec3(-12.5902, 1.2416, -10.1726), rot: vec3(0., 0. , 0.), scale:0.05  }, 
+        ];
+    //let colour = [0.7, 0.7, 0.7] ; 
+    for position in candle_position.iter()
+    {
+        //let light = Light::Point(1000., [0., 0., 0.], colour); // [position.pos[0], position.pos[1], position.pos[2]]
+        world.create_entity()
+        //.with(Lighting(light))
         .with(*position)
-        .with(bouteille)
+        .with(candle)
         .build();
     }
 
+    let chandelier = Model(ressources.get_whole_content("chandelier").unwrap()); // Model
+    let chandelier_position = Spatial { pos: vec3(-14.6168, 2.0, -12.643), rot: vec3(0., 0. , 0.), scale:1. } ;
+    //let colour = [1., 1., 1.] ; 
+    //let light = Light::Point(1000., [chandelier_position.pos[0], chandelier_position.pos[1], chandelier_position.pos[2]], colour);
+    world.create_entity()
+    //.with(Lighting(light))
+    .with(chandelier_position)
+    .with(chandelier)
+    .build();
+    
 
 
-    let teto = Model(ressources.get_object("teto", "Lat式改変テト_mesh_Lat式改変テト").unwrap());
 
+    let _teto = Model(ressources.get_object("teto", "Lat式改変テト_mesh_Lat式改変テト").unwrap());
 
-    for _ in 0..10
-    {
-	let radius = 10.;
-	let pos = [(rand::random::<f32>()-0.5)*radius,
-		   (rand::random::<f32>()-0.5)*radius,
-		   (rand::random::<f32>()-0.5)*radius];
-	let rot = [rand::random::<f32>(); 3];
-	let light = Light::Point
-	    (
-		1.,
-		pos,
-		rot
-	    );
-	world.create_entity()
-	    .with(Lighting(light))
-	    .with(Spatial
-		  {
-		      pos: vec3(pos[0], pos[1], pos[2]),
-		      rot: vec3(rot[0], rot[1], rot[2]),
-		      scale: 0.001
-		  })
-	    .with(teto)
-	    .build();
-    }    
+    let light = Light::NonDirectional
+	(
+	    0.004,
+	    [1., 0.8, 0.2]
+	);
+    world.create_entity()
+	.with(Lighting(light))
+	.build();
+    
 
-
+    world.insert(physics);
     let dispatcher = DispatcherBuilder::new()
 	.with(CameraSystem, "camera motion", &[])
 	.with(EventSendingSystem, "event sending", &[])
+	.with(PhysicSystem, "physics", &[])
 	.build();
     
     {let mut sender=world.write_resource::<EventSender>();
@@ -330,44 +429,70 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 }
 
 
+
+#[derive(Default)]
+struct ControledComp;
+impl Component for ControledComp
+{
+    type Storage = NullStorage<Self>;
+}
+
 struct CameraSystem;
 
 impl<'a> System<'a> for CameraSystem
 {
     type SystemData = (Write<'a, Camera>,
-		       Read<'a, DevicesState>);
-    fn run(&mut self, (mut camera, devices): Self::SystemData)
+		       Read<'a, DevicesState>,
+		       ReadStorage<'a, ControledComp>,
+		       WriteStorage<'a, Spatial>,
+    		       ReadStorage<'a, PhysicComponent>,
+		       Write<'a, Physics>);
+    fn run(&mut self, (mut camera, devices, controleds, mut spatials, physical, mut physics): Self::SystemData)
     {
+	    let sensibility = 0.003;
+	    let speed = 0.40; // parce que pourquoi pas.
 
-	let sensibility = 0.003;
-	let speed = 0.08; // parce que pourquoi pas.
+	    let (mouse_x, mouse_y) = devices.mouse_motion();
 
-	let (mouse_x, mouse_y) = devices.mouse_motion();
-
-	camera.rotate(
-	    (mouse_x as f32) * sensibility,
-	    (mouse_y as f32) * sensibility
-	);
-
+	    camera.rotate(
+	        (mouse_x as f32) * sensibility,
+	        (mouse_y as f32) * sensibility
+	    );
 	
-	if devices.key_continuous(Key::Q) {
+	    if devices.key_continuous(Key::Q) {
             camera.translate_side(-speed);
-	}
-	if devices.key_continuous(Key::D) {
+	    }
+	    if devices.key_continuous(Key::D) {
             camera.translate_side(speed);
-	}
-	if devices.key_continuous(Key::Z) {
+	    }
+	    if devices.key_continuous(Key::Z) {
             camera.translate_forward(speed);
-	}
-	if devices.key_continuous(Key::S) {
+	    }
+	    if devices.key_continuous(Key::S) {
             camera.translate_forward(-speed);
-	}
-	if devices.key_continuous(Key::Space) {
-	    camera.translate_y(speed);
-	}
-	if devices.key_continuous(Key::LShift) {
-	    camera.translate_y(-speed);
-	}
+	    }
+	    if devices.key_continuous(Key::Space) {
+	        camera.translate_y(speed);
+	    }
+	    if devices.key_continuous(Key::LShift) {
+	        camera.translate_y(-speed);
+	    }
+
+	    for (spatial, _, mut maybe_phy) in (&mut spatials, &controleds, physical.maybe()).join()
+	    {
+	        spatial.pos = camera.position;
+	        spatial.rot = camera.forward;
+		maybe_phy.iter_mut().for_each(
+		    |phy| {
+			physics
+			    .colliders
+			    .get_mut(phy.collider_id)
+			    .unwrap()
+			    .set_position(nalgebra::geometry::Isometry::<_, nalgebra::base::dimension::U3, nalgebra::geometry::UnitQuaternion<_>>::translation(spatial.pos[0], spatial.pos[1], spatial.pos[2]));
+
+		    })
+	    }
+
     }
 }
 
@@ -377,15 +502,13 @@ struct EventSendingSystem;
 impl<'a> System<'a> for EventSendingSystem
 {
 
-    type SystemData = (Write<'a, EventSender>,
-		       Read<'a, DevicesState>);
+    type SystemData = (Write<'a, EventSender>, Read<'a, DevicesState>);
     fn run(&mut self, (mut sender, devices): Self::SystemData)
     {
-
-	if devices.key_pressed(Key::Escape) {
+	    if devices.key_pressed(Key::Escape) {
             sender.push(GameEvent::Push("menu state".to_string()));
+
 	}
-       
 
     }
 }
@@ -395,15 +518,12 @@ struct MenuEventSystem;
 impl<'a> System<'a> for MenuEventSystem
 {
 
-    type SystemData = (Write<'a, EventSender>,
-		       Read<'a, DevicesState>);
+    type SystemData = (Write<'a, EventSender>, Read<'a, DevicesState>);
     fn run(&mut self, (mut sender, devices): Self::SystemData)
     {
-
-	if devices.key_pressed(Key::Escape) {
+	    if devices.key_pressed(Key::Escape) {
             sender.push(GameEvent::Pop(1));
-	}
-
+	    }
     }
 }
 
@@ -411,59 +531,32 @@ struct PhysicSystem;
 
 impl<'a> System<'a> for PhysicSystem
 {
-    type SystemData = (Write<'a, Physics>,
-		       WriteStorage<'a, Spatial>,
-		       ReadStorage<'a, PhysicId>);
+    type SystemData = (Write<'a, Physics>, WriteStorage<'a, Spatial>, ReadStorage<'a, PhysicComponent>);
 
     fn run(&mut self, (mut physics, mut spatial_st, physical_st): Self::SystemData)
     {
-
-	physics.run();
-
-	for (spatial, physic_id) in (&mut spatial_st, &physical_st).join()
-	{
-	    let Spatial{mut pos, mut rot, mut scale} = spatial;
-
-	    let isometry = physics
-		.colliders
-		.get(physics.col_tab[physic_id.0])
-		.unwrap()
-		.position();
-
-	    // pas fini: je cherchais un moyen efficace d'extraire les 2 vecteurs
-	    unreachable!()
-//	    pos = isometry.translation;
-//	    rot = isometry.rotation();
-		
+	    physics.run();
+	    for (spatial, physic_comp) in (&mut spatial_st, &physical_st).join()
+	    {
 	    
-	}
+	        let physic_id = physic_comp.collider_id;
 
+	        let isometry = physics
+		    .colliders
+		    .get(physic_id)
+		    .unwrap()
+		    .position();
 
-	/*	
-	for object in game_state.scene.objects.iter_mut() {
-            for similarity in object.1.iter_mut() {
-	let homogenous = physics
-                    .colliders
-                    .get(physics.col_tab[i])
-                    .unwrap()
-                    .position()
-                    .to_homogeneous();
-		let (_, _, scale) = similarity.deconstruct();
-		similarity.world_transformation = *homogenous.as_ref();
-		let (tra, rot, _) = similarity.deconstruct();
-		*similarity = Similarity::new(tra, rot, scale);
-		i += 1;
-            }
-	}
-*/
-
+	        spatial.rot = isometry.rotation.scaled_axis();
+	        spatial.pos = isometry.translation.vector;
+	    }
     }
 }
 
 
 
 
-fn init_menu(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
+fn init_menu(mut world: World, _ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
 {
     world.register::<Spatial>();
     world.register::<Model>();
@@ -491,26 +584,25 @@ fn main() -> Result<(), EngineError>
     let mut game = Game::new();
     game.register_state("main state",
                         make_main_scene,
-                        false,
                         None,
                         RenderBehavior::Superpose,
                         LogicBehavior::Superpose,
-			init_game
+			            init_game
     );
+
     game.register_state("menu state",
                         make_menu_scene,
-                        false,
                         Some(render_gui),
                         RenderBehavior::Superpose,
                         LogicBehavior::Blocking,
-			init_menu
+			            init_menu
 
     );
+
     game.push_state("main state")?;
     game.load_state("menu state")?;
-    //    println!("{:?}", game.ressources);
     
-    game.run(20)
+    game.run(10) // fps
 
 }
 

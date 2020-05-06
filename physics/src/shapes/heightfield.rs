@@ -8,7 +8,7 @@ use na::base::DMatrix;
 
 
 // We implement the Clone trait to the structure
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct HeightField
 {
     pub heights: DMatrix<f32>,

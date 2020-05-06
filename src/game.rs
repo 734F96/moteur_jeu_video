@@ -23,9 +23,8 @@ use sounds::{OneSound,SoundRessource};
 
 use specs::{Dispatcher, World};
 
+
 use std::collections::HashMap;
-
-
 
 
 
@@ -158,7 +157,6 @@ impl Game
         &mut self,
         name: &str,
         scene_builder: fn(&mut Game) -> Result<Scene, EngineError>,
-        with_physics: bool,
         run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
         render_behavior: RenderBehavior,
         logic_behavior: LogicBehavior,
@@ -170,7 +168,6 @@ impl Game
             .register(
                 name,
                 scene_builder,
-                with_physics,
                 run_gui,
                 render_behavior,
                 logic_behavior,
@@ -228,6 +225,7 @@ impl Game
       
     }    
 
+
     // play sound with time limit
     // duration == none -> play the sound to infinity -> set the end fielf of OneSound to -2
     // duration == some -> play the sound duration sec
@@ -277,7 +275,7 @@ impl Game
             }
        } 
 
-    } 
+
 
 
 
@@ -331,10 +329,12 @@ impl Game
                             &state_name
                         ).unwrap();
                     },
+
                     GameEvent::PlaySound(name,position) => self.play_sound(name,position),
     		    GameEvent::PlaySoundTimeLimit(name,duration,position) => self.play_sound_time_limit(name,duration,position),
                     GameEvent::DownVolume()=>self.down_volume(),
                     GameEvent::UpVolume()=>self.up_volume()
+
                 }
             }
             _ => ()

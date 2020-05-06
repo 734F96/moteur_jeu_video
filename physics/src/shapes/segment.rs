@@ -5,7 +5,7 @@ use ncollide3d::math::Point;
 
 
 // We implement the Clone trait to the structure
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Segment
 {
     pub a: Point<f32>,

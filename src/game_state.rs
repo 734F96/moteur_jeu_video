@@ -5,7 +5,6 @@ use graphics::
 {
     glium::glutin::event_loop::EventLoopProxy,
     Similarity,
-    Lights,
     Camera
 };
 
@@ -14,18 +13,9 @@ use imgui_glium_renderer::Renderer;
 
 use base::EngineError;
 
-use physics::Physics;
+
 
 use std::collections::HashMap;
-
-use physics::nphysics3d::{
-    force_generator::DefaultForceGeneratorSet,
-    joint::DefaultJointConstraintSet,
-    world::{DefaultMechanicalWorld, DefaultGeometricalWorld}
-
-};
-use physics::make_objects;
-use graphics::nalgebra::Vector3;
 
 use rayon::iter::ParallelIterator;
 use rayon::iter::IntoParallelIterator;
@@ -40,21 +30,18 @@ use specs::
     join::ParJoin
 };
 
-use std::time::{Instant, Duration};
-
 
 pub struct GameState
 {
     pub name: String,
-    pub scene: Scene,
-    pub physics: Option<Physics>,
+    pub scene: Scene, // to be removed
     gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
     render_behavior: RenderBehavior,
     logic_behavior: LogicBehavior,
-    proxy: EventLoopProxy<GameEvent>,
+    proxy: EventLoopProxy<GameEvent>, // to be removed (maybe)
 
     pub world: World,
-    dispatcher: Dispatcher<'static, 'static>
+    dispatcher: Dispatcher<'static, 'static> // game states never die
 }
 
 
@@ -64,7 +51,6 @@ impl GameState
     
     fn new(name: String,
            scene: Scene,
-           with_physics: bool,
            render_behavior: RenderBehavior,
            logic_behavior: LogicBehavior,
            gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
@@ -74,35 +60,6 @@ impl GameState
     ) -> Self
     {
 	let mut world = World::new();
-
-	if with_physics
-        {
-            // MechanicalWorld with a gravity vector
-            let mechanical_world = DefaultMechanicalWorld::new(Vector3::new(0.0, -9.81, 0.0));
-
-            let geometrical_world = DefaultGeometricalWorld::<f32>::new();
-            let joint_constraints = DefaultJointConstraintSet::<f32>::new();
-            let force_generators = DefaultForceGeneratorSet::<f32>::new();
-
-            let obj_set = make_objects(&scene);
-
-            // (bodies, colliders, coll_tab)
-            let three_uplet = physics::build_rb_col(obj_set);
-
-            // Where we store all the RigidBody object
-            let bodies = three_uplet.0;
-
-            // Where we store all the Collider object
-            let colliders = three_uplet.1;
-
-            // Where we store the handle of every collider so we can get their position and material later (used for testing only at the moment)
-            let col_tab = three_uplet.2;
-
-            let physics = Physics::new(mechanical_world, geometrical_world, bodies, colliders, joint_constraints, force_generators, col_tab);
-	
-	    world.insert(physics);
-    };
-
 
 	world.insert(EventSender::new());
 
@@ -117,7 +74,6 @@ impl GameState
             gui: gui,
             logic_behavior: logic_behavior,
             proxy: proxy,
-            physics: None,
 	    world: world,
 	    dispatcher: dispatcher
         }
@@ -129,7 +85,6 @@ impl GameState
     {
         Ok(Self::new(proto.name.clone(),
                      (proto.scene_builder)(game)?,
-                     proto.with_physics,
                      proto.render_behavior,
                      proto.logic_behavior,
                      proto.run_gui,
@@ -207,9 +162,16 @@ impl GameState
 
 	self.scene.lights.clear();
 
-	for Lighting(light) in (&light_storage).join()
+	for (Lighting(light), maybe_spatial) in (&light_storage, spatial_storage.maybe()).join()
 	{
-	    self.scene.lights.push(*light)
+	    self.scene.lights.push(*light, maybe_spatial
+				   .map(|spatial| ([spatial.pos[0],
+						   spatial.pos[1],
+						    spatial.pos[2], 0.],
+						   [spatial.rot[0],
+						    spatial.rot[1],
+						    spatial.rot[2], 0.],)
+				   ))
 	}
 
 
@@ -278,7 +240,6 @@ impl GameStateStack
         &mut self,
         name: &str,
         scene_builder: fn(&mut Game) -> Result<Scene, EngineError>,
-        with_physics: bool,
         run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
         render_behavior: RenderBehavior,
         logic_behavior: LogicBehavior,
@@ -292,7 +253,6 @@ impl GameStateStack
             ProtoState
             {
                 name: name,
-                with_physics: with_physics,
                 scene_builder: scene_builder,
                 run_gui: run_gui,
                 render_behavior: render_behavior,
@@ -398,7 +358,6 @@ pub struct ProtoState
     run_gui: Option<fn(&mut Ui, &EventLoopProxy<GameEvent>)>,
     init: fn(World, &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>),
 
-    with_physics: bool, // can make a trait instead
     render_behavior: RenderBehavior, // can make a trait instead
     logic_behavior: LogicBehavior, // can make a trait instead
 

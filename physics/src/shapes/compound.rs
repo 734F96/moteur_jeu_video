@@ -11,6 +11,15 @@ pub struct Compound
     pub shapes: Vec<(Isometry<f32>, ShapeHandle<f32>)>
 }
 
+use std::fmt;
+impl fmt::Debug for Compound
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
+    {
+	write!(f, "Compound")
+    }
+}
+
 impl Compound{
     /// Creates a Compound
     pub fn new(shapes: Vec<(Isometry<f32>, ShapeHandle<f32>)>) -> Compound{
