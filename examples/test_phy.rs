@@ -37,7 +37,6 @@ use physics::{Physics, make_trimesh};
 
 use nalgebra::normalize;
 
-use nphysics3d::math::Matrix;
 
 
 fn make_main_scene(
@@ -72,6 +71,7 @@ fn make_main_scene(
 }
 
 
+
 fn make_menu_scene(
     game: &mut Game
 ) -> Result<Scene, EngineError>
@@ -100,6 +100,8 @@ fn render_gui(ui: &mut Ui, proxy: &EventLoopProxy<GameEvent>)
         ui.text(im_str!("Useless text"));
     });
 }
+
+
 
 fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
 {
@@ -173,10 +175,6 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 	    .with(phy)
         .build();
     }
-
-
-
-
 
 
     let table = Model(ressources.get_whole_content("table").unwrap());
@@ -266,12 +264,17 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     
     (world, dispatcher)
 }
+
+
+
 #[derive(Default)]
 struct ControledComp;
 impl Component for ControledComp
 {
     type Storage = NullStorage<Self>;
 }
+
+
 
 struct CameraSystem;
 
@@ -284,7 +287,7 @@ impl<'a> System<'a> for CameraSystem
     fn run(&mut self, (mut camera, devices, controleds, mut spatials): Self::SystemData)
     {
 	    let sensibility = 0.003;
-	    let speed = 0.40; // parce que pourquoi pas.
+	    let speed = 0.40; // Used to adjust the camera speed
 
 	    let (mouse_x, mouse_y) = devices.mouse_motion();
 
@@ -321,6 +324,7 @@ impl<'a> System<'a> for CameraSystem
 }
 
 
+
 struct EventSendingSystem;
 
 impl<'a> System<'a> for EventSendingSystem
@@ -335,6 +339,8 @@ impl<'a> System<'a> for EventSendingSystem
     }
 }
 
+
+
 struct MenuEventSystem;
 
 impl<'a> System<'a> for MenuEventSystem
@@ -348,6 +354,8 @@ impl<'a> System<'a> for MenuEventSystem
 	    }
     }
 }
+
+
 
 struct PhysicSystem;
 
@@ -401,7 +409,6 @@ impl<'a> System<'a> for PhysicSystem
 
 
 
-
 fn init_menu(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
 {
     world.register::<Spatial>();
@@ -417,12 +424,12 @@ fn init_menu(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     (world, dispatcher)
 }
 
-/*
-Un exemple simple avec un état de jeu et un état pour le menu.
-Le menu bloque le jeu quand il est en place, mais le jeu s'affiche toujours même
-si le menu est par-dessus.
-Le jeu n'as pas de GUI, le menu si.
 
+
+/*
+A simple example with a game_state and a state for the menu.
+The menu freezes the game when it's showed, but the game is still displayed even though the menu is over it.
+The game doesn't have any GUI but the menu does.
 */
 fn main() -> Result<(), EngineError>
 {
@@ -447,7 +454,6 @@ fn main() -> Result<(), EngineError>
 
     game.push_state("main state")?;
     game.load_state("menu state")?;
-    //    println!("{:?}", game.ressources);
     
-    game.run(15)
+    game.run(15) // Parameter is the number of update per second (physic and fps)
 }
