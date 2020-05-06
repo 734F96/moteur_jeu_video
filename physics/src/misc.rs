@@ -42,7 +42,7 @@ impl ShapeType
 	scale: f32,
 	gravity: bool) -> PhysicObject
     {
-	    self.make_object(translation, rotation, scale, gravity, BodyStatus::Static)
+	    self.make_object(translation, rotation, scale, gravity, BodyStatus::Static, None, None)
     }
 
     pub fn make_dynamic(
@@ -52,7 +52,7 @@ impl ShapeType
 	scale: f32,
 	gravity: bool) -> PhysicObject
     {
-	    self.make_object(translation, rotation, scale, gravity, BodyStatus::Dynamic)
+	    self.make_object(translation, rotation, scale, gravity, BodyStatus::Dynamic, None, None)
     }
 
     pub fn make_kinematic(
@@ -60,10 +60,24 @@ impl ShapeType
 	translation: Vector3<f32>,
 	rotation: Vector3<f32>,
 	scale: f32,
-	gravity: bool) -> PhysicObject
+    gravity: bool,
+    kinematic_rotations : Vector3<bool>,
+    kinematic_translations : Vector3<bool>) -> PhysicObject
     {
-	    self.make_object(translation, rotation, scale, gravity, BodyStatus::Kinematic)
+	    self.make_object(translation, rotation, scale, gravity, BodyStatus::Kinematic, Some(kinematic_rotations), Some(kinematic_translations))
     }
+
+    pub fn make_dynamic_sans_liberte(
+        &self,
+        translation: Vector3<f32>,
+        rotation: Vector3<f32>,
+        scale: f32,
+        gravity: bool,
+        kinematic_rotations : Vector3<bool>,
+        kinematic_translations : Vector3<bool>) -> PhysicObject
+        {
+            self.make_object(translation, rotation, scale, gravity, BodyStatus::Dynamic, Some(kinematic_rotations), Some(kinematic_translations))
+        }
 
 
     pub fn make_object(
@@ -72,7 +86,9 @@ impl ShapeType
 	rotation: Vector3<f32>,
 	scale: f32,
 	gravity: bool,
-	stat: BodyStatus) -> PhysicObject
+    stat: BodyStatus,
+    kinematic_rot : Option<Vector3<bool>>,
+    kinematic_trans : Option<Vector3<bool>>) -> PhysicObject
     {
         match self
         {
@@ -83,14 +99,17 @@ impl ShapeType
 		        let center: Point3<f32> = trimesh
 		        .points.iter()
 		        .fold(Point3::new(0., 0., 0.), |sum, p| sum+p.coords) / (trimesh.points.len() as f32);
-		
+        
+              //  let kinematic_rotations = kinematic_rot.unwrap_or(Vector3::new(false, false, false));
+              //  let kinematic_translations = kinematic_trans.unwrap_or(Vector3::new(false, false, false));
+                
                 let rb_data = RbData::new(
                     translation,                            // translation
                     rotation,                               // rotation
                     gravity,                                // gravity_enabled
                     stat,                                   // bodystatus
-                    Vector3::new(5.0, 0.0, 0.0),            // linear_velocity
-                    Vector3::new(5.0, 0.0, 0.0),            // angular_velocity
+                    Vector3::new(0.0, 0.0, 0.0),            // linear_velocity
+                    Vector3::new(0.0, 0.0, 0.0),            // angular_velocity
                     0.8,                                    // linear_damping
                     1.8,                                    // angular_damping
                     INFINITY,                               // max_linear_velocity
@@ -99,8 +118,8 @@ impl ShapeType
                     2000.0,                                 // mass
                     center                    ,             // local_center_of_mass
                     ActivationStatus::default_threshold(),  // sleep_threshold
-                    Vector3::new(false, false, false),      // kinematic_translations
-                    Vector3::new(false, false, false),      // kinematic_rotations
+                    kinematic_trans.unwrap_or(Vector3::new(false, false, false)),                  // kinematic_translations
+                    kinematic_rot.unwrap_or(Vector3::new(false, false, false)),                    // kinematic_rotations
                     0,                                      // user_data
                     true                                    // enable_linear_motion_interpolation
                 );

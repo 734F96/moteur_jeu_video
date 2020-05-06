@@ -158,6 +158,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 
     let mut physics = Physics::default();
     
+    // Sphere
     let sphere = Model(ressources.get_object("transparent_sphere", "Sphere").unwrap());
 
     for _ in 0..50
@@ -175,7 +176,9 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         .build();
     }
 
+    // Saloon --> Statique mais Ridigbody et Collider
     let saloon = Model(ressources.get_object("all_objects_saloon", "saloon_SM_Bld_Saloon_01_27_SM_Bld_Saloon_01").unwrap());
+    
     let zero = Spatial
     {
         pos: vec3(0., 0., 0.),
@@ -183,46 +186,112 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         scale: 1.
     };
 
+    let obj_saloon = ressources.get_by_handle(saloon.0);
+    let saloon_trimesh = make_trimesh(&obj_saloon);
+    
+    let physic_obj_saloon = saloon_trimesh.make_static(zero.pos, zero.rot, zero.scale, true);
+    
+    let gen_index = physics.build_rigbd_col(&physic_obj_saloon);
+
+	let phy = PhysicComponent
+	{
+	    collider_id: gen_index,
+	    shape: saloon_trimesh.clone()
+	};
+
     world.create_entity()
 	.with(zero)
-	.with(saloon)
+    .with(saloon)
+    .with(phy)
     .build();
     
+    // Sol --> Statique mais Ridigbody et Collider
     let sol = Model(ressources.get_object("all_objects_saloon", "sol_SM_Env_Sand_Ground_06_246_SM_Env_Sand_Ground_06").unwrap());
+
+    let obj_sol = ressources.get_by_handle(sol.0);
+    let sol_trimesh = make_trimesh(&obj_sol);
+    
+    let physic_obj_sol = sol_trimesh.make_static(zero.pos, zero.rot, zero.scale, true);
+    
+    let gen_index = physics.build_rigbd_col(&physic_obj_sol);
+
+	let phy = PhysicComponent
+	{
+	    collider_id: gen_index,
+	    shape: sol_trimesh.clone()
+	};
+
     world.create_entity()
 	.with(zero)
-	.with(sol)
+    .with(sol)
+    .with(phy)
     .build();
 
+
+    // Portes chambres --> Devrait bouger mais avec des contraintes
     let porte_chambre = Model(ressources.get_object("all_objects_saloon", "porte_chambre_SM_Bld_Saloon_RoomDoor_01_273_SM_Bld_Saloon_RoomDoor_01.001").unwrap());
     let portes_chambres_positions = vec! [
         Spatial { pos: vec3(-19.3022, 3.41965, -17.4815), rot: vec3(0., 0., 0.), scale: 1. },
         Spatial { pos: vec3(-15.5513, 3.41965, -17.4815), rot: vec3(0., 0., 0.), scale: 1. },
         Spatial { pos: vec3(-10.5668, 3.41965, -17.4815), rot: vec3(0., 0.6981, 0.), scale: 1. },
     ];
-
-    for position in portes_chambres_positions.iter()
-    {   
-        world.create_entity()
-        .with(*position)
-        .with(porte_chambre)
-        .build();
-    }
+    let obj_porte_chambre = ressources.get_by_handle(porte_chambre.0);
+    let porte_chambre_trimesh = make_trimesh(&obj_porte_chambre);
     
+    for position in portes_chambres_positions.iter()
+    {
+	    let Spatial{pos, rot, scale} = position.clone();
+        let physic_obj_porte_chambre = porte_chambre_trimesh
+	    .make_dynamic_sans_liberte(pos, rot, scale, true, vec3(true, false, true), vec3(true, true, true));
+	
+        let gen_index = physics.build_rigbd_col(&physic_obj_porte_chambre);
+
+	    let phy = PhysicComponent
+	    {
+	        collider_id: gen_index,
+	        shape: porte_chambre_trimesh.clone()
+	    };
+
+        world.create_entity()
+            .with(*position)
+            .with(porte_chambre)
+	        .with(phy)
+            .build();
+    }
+
+    
+    // Porte entrée --> Devrait bouger mais avec des contraintes
     let porte_entree = Model(ressources.get_object("all_objects_saloon", "porte_entree_SM_Bld_Saloon_Swinging_Doors_01_171_SM_Bld_Saloon_Swinging_Door").unwrap());
     let portes_entree_positions = vec! [
         Spatial { pos: vec3(-9.64833, 1.46962, -8.76043), rot: vec3(0., 0.7853, 0.), scale: 1. },
         Spatial { pos: vec3(-8.71997, 1.46962, -9.68726), rot: vec3(0., -2.3561, 0.), scale: 1.  },
     ];
 
+    let obj_porte_entree = ressources.get_by_handle(porte_entree.0);
+    let porte_entree_trimesh = make_trimesh(&obj_porte_entree);
+    
     for position in portes_entree_positions.iter()
-    {   
+    {
+	    let Spatial{pos, rot, scale} = position.clone();
+        let physic_obj_porte_entree = porte_entree_trimesh
+	    .make_dynamic_sans_liberte(pos, rot, scale, true, vec3(true, false, true), vec3(true, true, true));
+	
+        let gen_index = physics.build_rigbd_col(&physic_obj_porte_entree);
+
+	    let phy = PhysicComponent
+	    {
+	        collider_id: gen_index,
+	        shape: porte_entree_trimesh.clone()
+	    };
+
         world.create_entity()
-        .with(*position)
-        .with(porte_entree)
-        .build();
+            .with(*position)
+            .with(porte_entree)
+	        .with(phy)
+            .build();
     }
 
+    // Tables --> Statiques ?
     let table = Model(ressources.get_object("all_objects_saloon", "table_SM_Prop_Table_3_SM_Prop_Table_01").unwrap());
     let obj_table = ressources.get_by_handle(table.0);
     let table_trimesh = make_trimesh(&obj_table);
@@ -236,7 +305,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     {
 	let Spatial{pos, rot, scale} = position.clone();
         let physic_obj_table = table_trimesh
-	    .make_static(pos, rot*std::f32::consts::PI, scale, true);
+	    .make_static(pos, rot, scale, true);
 	
         let gen_index = physics.build_rigbd_col(&physic_obj_table);
 
@@ -246,14 +315,14 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 	    shape: table_trimesh.clone()
 	};
 	
-
 	world.create_entity()
         .with(*position)
-            .with(table)
+        .with(table)
 	    .with(phy)
         .build();
     }
  
+    // Lit double --> Statique 
     let lit_double = Model(ressources.get_object("all_objects_saloon", "lit_double_SM_Prop_Bed_01_281_SM_Prop_Bed_01").unwrap());
     let lits_doubles_positions = vec! [
         Spatial { pos: vec3(-13.8841, 3.27735, -19.7949), rot: vec3(0., -1.5707, 0.), scale:1. },
@@ -261,14 +330,32 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-11.0315, 3.27735, -19.7949), rot: vec3(0., 1.5707, 0.), scale:1. },
     ];
 
+    let obj_lit_double = ressources.get_by_handle(lit_double.0);
+    let lit_double_trimesh = make_trimesh(&obj_lit_double);
+
     for position in lits_doubles_positions.iter()
-    {   
-        world.create_entity()
+    {
+	let Spatial{pos, rot, scale} = position.clone();
+        let physic_obj_lit_double = lit_double_trimesh
+	    .make_static(pos, rot, scale, true);
+	
+        let gen_index = physics.build_rigbd_col(&physic_obj_lit_double);
+
+	let phy = PhysicComponent
+	{
+	    collider_id: gen_index,
+	    shape: lit_double_trimesh.clone()
+	};
+	
+	world.create_entity()
         .with(*position)
         .with(lit_double)
+	    .with(phy)
         .build();
     }
+ 
   
+    // Chaises --> Pas statique
     let chaise = Model(ressources.get_object("all_objects_saloon", "chaise_SM_Prop_Chair_01_327_SM_Prop_Chair_01").unwrap());
     let chaises_positions = vec! [
         Spatial { pos: vec3(-14.714, 0.325766, -11.6007), rot: vec3(0., 3.1415, 0.), scale:1. },
@@ -276,14 +363,31 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-15.3367, 0.325766, -13.4179), rot: vec3(0., 0.72583, 0.), scale:1. },
     ];
 
+    let obj_chaise = ressources.get_by_handle(chaise.0) ; // &Object
+    let chaise_trimesh = make_trimesh(&obj_chaise) ;
     for position in chaises_positions.iter()
-    {   
-        world.create_entity()
+    {
+	let Spatial{pos, rot, scale} = position.clone();
+        let physic_obj_chaise = chaise_trimesh
+	    .make_dynamic(pos, rot, scale, true);
+	
+        let gen_index = physics.build_rigbd_col(&physic_obj_chaise);
+
+	let phy = PhysicComponent
+	{
+	    collider_id: gen_index,
+	    shape: chaise_trimesh.clone()
+	};
+	
+	world.create_entity()
         .with(*position)
         .with(chaise)
+	    .with(phy)
         .build();
     }
+ 
 
+    // Tabourets --> Pas statiques
     let tabourets = Model(ressources.get_object("all_objects_saloon", "tabouret_SM_Prop_Stool_Round_6_SM_Prop_Stool_Round_01.002").unwrap());
     let tabourets_positions = vec! [
         Spatial { pos: vec3(-9.5536, 0.360777, -12.879), rot: vec3(0., 0., 0.), scale:1. },
@@ -296,14 +400,31 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-12.5902, 0.360777, -11.1726), rot: vec3(0., 0., 0.), scale:1. },
     ];
 
+    let obj_tabouret = ressources.get_by_handle(tabourets.0) ; // &Object
+    let tabouret_trimesh = make_trimesh(&obj_tabouret) ;
     for position in tabourets_positions.iter()
-    {   
-        world.create_entity()
+    {
+	let Spatial{pos, rot, scale} = position.clone();
+        let physic_obj_tabouret = tabouret_trimesh
+	    .make_dynamic(pos, rot, scale, true);
+	
+        let gen_index = physics.build_rigbd_col(&physic_obj_tabouret);
+
+	let phy = PhysicComponent
+	{
+	    collider_id: gen_index,
+	    shape: tabouret_trimesh.clone()
+	};
+	
+	world.create_entity()
         .with(*position)
         .with(tabourets)
+	    .with(phy)
         .build();
     }
 
+
+    // Verres --> Pas statiques
     let verres = Model(ressources.get_object("all_objects_saloon", "verres_SM_Prop_Cup_357_SM_Prop_Cup_01.002").unwrap());
     let verres_positions = vec! [
         Spatial { pos: vec3(-10.4869, 1.2616, -12.4206), rot: vec3(0., 0., 0.), scale:1. },
@@ -315,18 +436,34 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-12.7213, 1.2616, -10.7131), rot: vec3(0., 0., 0.), scale:1. },
     ];
 
+    let obj_verres = ressources.get_by_handle(verres.0) ; // &Object
+    let verres_trimesh = make_trimesh(&obj_verres) ;
     for position in verres_positions.iter()
-    {   
-        world.create_entity()
+    {
+	let Spatial{pos, rot, scale} = position.clone();
+        let physic_obj_verres = verres_trimesh
+	    .make_dynamic(pos, rot, scale, true);
+	
+        let gen_index = physics.build_rigbd_col(&physic_obj_verres);
+
+	let phy = PhysicComponent
+	{
+	    collider_id: gen_index,
+	    shape: verres_trimesh.clone()
+	};
+	
+	world.create_entity()
         .with(*position)
         .with(verres)
+	    .with(phy)
         .build();
     }
 
+
+    // Bouteilles --> Pas statiques
     let bouteille = Model(ressources.get_object("all_objects_saloon", "bouteille_SM_Prop_Bottle_363_SM_Prop_Bottle_01").unwrap()); // Model
     let obj_bouteille = ressources.get_by_handle(bouteille.0) ; // &Object
     let bouteille_trimesh = make_trimesh(&obj_bouteille) ;
-
     
     let bouteilles_positions = vec! [
         Spatial { pos: vec3(-14.1798, 1.47845, -15.2044), rot: vec3(0., 0., 0.), scale:1. },
@@ -335,21 +472,16 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-13.0485, 1.48304, -15.1097), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-10.075, 1.48645, -15.2669), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-9.7778, 1.48645, -15.1302), rot: vec3(0., 0., 0.), scale:1. },
-        Spatial { pos: vec3(-10.7084, 1.2616, -13.1072), rot: vec3(0., 0., 0.), scale:1. },
-        Spatial { pos: vec3(-10.675, 1.2616, -12.679), rot: vec3(0., 0., 0.), scale:1. },
-        Spatial { pos: vec3(-10.471, 1.2616, -12.9902), rot: vec3(0., 0., 0.), scale:1. },
-        Spatial { pos: vec3(-12.5093, 1.2616, -10.2678), rot: vec3(0., 0., 0.), scale:1. },
-        Spatial { pos: vec3(-12.7289, 1.2616, -10.2876), rot: vec3(0., 0., 0.), scale:1. },
-        Spatial { pos: vec3(-12.613, 1.2616, -10.0908), rot: vec3(0., 0., 0.), scale:1. },
-    ];
-
-    let light = Light::NonDirectional
-	(
-	    0.4,
-	    [1., 0.8, 0.2]
-	);
+        Spatial { pos: vec3(-10.7184, 1.2616, -13.1172), rot: vec3(0., 0., 0.), scale:1. },
+        Spatial { pos: vec3(-10.685, 1.2616, -12.669), rot: vec3(0., 0., 0.), scale:1. },
+        Spatial { pos: vec3(-10.461, 1.2616, -13.1002), rot: vec3(0., 0., 0.), scale:1. },
+        Spatial { pos: vec3(-12.2993, 1.2616, -10.1778), rot: vec3(0., 0., 0.), scale:1. },
+        Spatial { pos: vec3(-12.9389, 1.2616, -10.1976), rot: vec3(0., 0., 0.), scale:1. },
+        Spatial { pos: vec3(-12.523, 1.2616, -9.8908), rot: vec3(0., 0., 0.), scale:1. },
+        ];
 
     
+
     for position in bouteilles_positions.iter()
     {
 	    let Spatial{pos, rot, scale} = position.clone();
@@ -364,46 +496,65 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 	        shape: bouteille_trimesh.clone()
 	    };
 
-	
-         world.create_entity()
+        world.create_entity()
             .with(*position)
             .with(bouteille)
-	    .with(Lighting(light))
-	    .with(phy)
-        .build();
-    }
-    // Il faudra ajouter la lumière pour les deux suivants
-    let candle = Model(ressources.get_whole_content("candle").unwrap()); // Model
-    let candle_position = vec![ 
-        Spatial { pos: vec3(-14.6168, 1.2416, -12.643), rot: vec3(0., 0. , 0.), scale:0.05 }, 
-        Spatial { pos: vec3(-10.5536, 1.2416, -12.879), rot: vec3(0., 0. , 0.), scale:0.05  },
-        Spatial { pos: vec3(-12.5902, 1.2416, -10.1726), rot: vec3(0., 0. , 0.), scale:0.05  }, 
-        ];
-    //let colour = [0.7, 0.7, 0.7] ; 
-    for position in candle_position.iter()
-    {
-        //let light = Light::Point(1000., [0., 0., 0.], colour); // [position.pos[0], position.pos[1], position.pos[2]]
-        world.create_entity()
-        //.with(Lighting(light))
-        .with(*position)
-        .with(candle)
-        .build();
+	       // .with(Lighting(light))
+	        .with(phy)
+            .build();
     }
 
+
+    // Candle --> Pas statique et source de lumière
+    let candle = Model(ressources.get_whole_content("candle").unwrap()); // Model
+    let candle_positions = vec![ 
+        Spatial { pos: vec3(-14.6168, 1.2516, -12.643), rot: vec3(0., 0. , 0.), scale:0.05 }, 
+        Spatial { pos: vec3(-10.5536, 1.2516, -12.879), rot: vec3(0., 0. , 0.), scale:0.05  },
+        Spatial { pos: vec3(-12.5902, 1.2516, -10.1726), rot: vec3(0., 0. , 0.), scale:0.05  }, 
+        ];
+
+    let light = Light::NonDirectional
+	(
+	    0.4,
+	    [1., 0.8, 0.2]
+	);
+   /* let obj_candle = ressources.get_by_handle(candle.0) ; // &Object
+    let candle_trimesh = make_trimesh(&obj_candle) ;
+    */
+
+    for position in candle_positions.iter()
+    {
+	   /* let Spatial{pos, rot, scale} = position.clone();
+        let physic_obj_candle = candle_trimesh
+	    .make_dynamic(pos, rot, scale, true);
+	
+        let gen_index = physics.build_rigbd_col(&physic_obj_candle);
+
+	    let phy = PhysicComponent
+	    {
+	        collider_id: gen_index,
+	        shape: candle_trimesh.clone()
+	    };*/
+
+        world.create_entity()
+            .with(*position)
+            .with(candle)
+	        .with(Lighting(light))
+	        //.with(phy)
+            .build();
+    }
+        
+   
+
+    // Chandelier --> Statique et source de lumière
     let chandelier = Model(ressources.get_whole_content("chandelier").unwrap()); // Model
     let chandelier_position = Spatial { pos: vec3(-14.6168, 2.0, -12.643), rot: vec3(0., 0. , 0.), scale:1. } ;
-    //let colour = [1., 1., 1.] ; 
-    //let light = Light::Point(1000., [chandelier_position.pos[0], chandelier_position.pos[1], chandelier_position.pos[2]], colour);
     world.create_entity()
-    //.with(Lighting(light))
     .with(chandelier_position)
     .with(chandelier)
+    .with(Lighting(light))
     .build();
     
-
-
-
-    let _teto = Model(ressources.get_object("teto", "Lat式改変テト_mesh_Lat式改変テト").unwrap());
 
     let light = Light::NonDirectional
 	(
