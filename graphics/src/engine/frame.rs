@@ -93,7 +93,7 @@ impl Frame {
                             view_matrix: camera.get_view_matrix(),
                             perspective_matrix: camera.get_perspective_matrix(),
 
-                            specular_color: *specular_color,
+                            material_specular: *specular_color,
                             specular_exponent: *specular_exponent,
                             opacity: *opacity,
                             

@@ -10,18 +10,15 @@ smooth out vec3 v_normal;
 uniform mat4 view_matrix;
 uniform mat4 perspective_matrix;
 
-
 void main()
 {
-     // for non-uniform scaling
-     v_normal = normalize(transpose(inverse(mat3(world_transformation))) * normal);
+     v_normal = transpose(inverse(mat3(world_transformation))) * normal;
+     v_position = vec3((world_transformation * vec4(position, 1.)));
 
-     vec4 world_position = world_transformation * vec4(position, 1.0);
-     v_position = world_position.xyz / world_position.w;
-	
      gl_Position =
 	  perspective_matrix
-	  *view_matrix
-	  *world_position;
+	  * view_matrix
+	  * world_transformation
+	  * vec4(position, 1.);
 
 }

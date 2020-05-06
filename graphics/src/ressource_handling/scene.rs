@@ -31,7 +31,7 @@ impl Scene {
         self.objects.push((meshes, instances));
     }
 
-    pub fn add_light(&mut self, light: Light, maybe_pos: Option<[f32; 3]>)
+    pub fn add_light(&mut self, light: Light, maybe_pos: Option<([f32; 4], [f32; 4])>)
     {
         self.lights.push(light, maybe_pos);
     }
@@ -49,6 +49,7 @@ impl Scene {
     {
 
         self.camera.update_aspect_ratio(gr);
+	self.lights.print();
         self.objects.iter().for_each(|(objects, instances)| {
 
 

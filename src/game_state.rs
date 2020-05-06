@@ -176,7 +176,14 @@ impl GameState
 
 	for (Lighting(light), maybe_spatial) in (&light_storage, spatial_storage.maybe()).join()
 	{
-	    self.scene.lights.push(*light, maybe_spatial.map(|spatial| * spatial.pos.as_ref()))
+	    self.scene.lights.push(*light, maybe_spatial
+				   .map(|spatial| ([spatial.pos[0],
+						   spatial.pos[1],
+						    spatial.pos[2], 0.],
+						   [spatial.rot[0],
+						    spatial.rot[1],
+						    spatial.rot[2], 0.],)
+				   ))
 	}
 
 

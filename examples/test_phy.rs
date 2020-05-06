@@ -47,6 +47,7 @@ fn make_main_scene(
     let ressources_path = get_ressources_path();
 
     holder.load_wavefront(disp, "transparent_sphere.obj", &ressources_path)?;
+    holder.load_wavefront(disp, "sphere_smooth.obj", &ressources_path)?;
 
     holder.load_wavefront(disp, "saloon.obj", &ressources_path)?;
     holder.load_wavefront(disp, "porte_chambre.obj", &ressources_path)?;
@@ -61,7 +62,7 @@ fn make_main_scene(
 
     
 
-    holder.add_parameters(Params::new().with_transparency(true), "Sphere");
+//    holder.add_parameters(Params::new().with_transparency(true), "Sphere");
 
     let mut scene = Scene::new(&disp);
 
@@ -147,14 +148,14 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 
     let mut physics = Physics::default();
     
-    let sphere = Model(ressources.get_object("transparent_sphere", "Sphere").unwrap());
+    let sphere = Model(ressources.get_object("sphere_smooth", "Sphere").unwrap());
     for _ in 0..50
     {
         let spatial = Spatial
         {
                 pos: vec3(rand::random(), rand::random(), rand::random()),
                 rot: vec3(rand::random(), rand::random(), rand::random()),
-                scale: 0.001
+                scale: 0.1
         };
         world.create_entity()
             .with(spatial)
@@ -221,12 +222,17 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-14.6168, 0.333457, -12.643), rot: vec3(0., -0.33592, 0.), scale: 1. },
         Spatial { pos: vec3(-10.5536, 0.360777, -12.879), rot: vec3(0., 0.94535 , 0.), scale:1.  },
         Spatial { pos: vec3(-12.5902, 0.360777, -10.1726), rot: vec3(0., 0.28788 , 0.), scale:1.  },
-        ];
+
+        Spatial { pos: vec3(-12.5902, 2., -10.1726), rot: vec3(0., 0. , 0.), scale:1.  },
+        Spatial { pos: vec3(-12.5902, 4., -10.1726), rot: vec3(0.28788, 0. , 0.), scale:1.  },
+        Spatial { pos: vec3(-12.5902, 6., -10.1726), rot: vec3(0. , 0., 0.28788), scale:1.  },
+];
+    let pi = std::f32::consts::PI;
     for position in tables_positions.iter()
     {
 	let Spatial{pos, rot, scale} = position.clone();
         let physic_obj_table = table_trimesh
-	    .make_static(pos, rot, scale, true);
+	    .make_static(pos, rot*pi, scale, true);
 	
         let gen_index = physics.build_rigbd_col(&physic_obj_table);
 
@@ -250,25 +256,23 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     let teto = Model(ressources.get_object("teto", "Lat式改変テト_mesh_Lat式改変テト").unwrap());
 
 
-    for _ in 0..4
+    for _ in 0..6
     {
 	let radius = 30.;
 	let pos = [(rand::random::<f32>()-0.5)*radius,
 		   (rand::random::<f32>()-0.5)*radius,
 		   (rand::random::<f32>()-0.5)*radius];
-	let rot = [rand::random::<f32>(); 3];
-	let light = Light::Point
+	let light = Light::NonDirectional
 	    (
-		1000.,
-		pos,
-		rot
+		10.,
+		[1., 1., 0.]
 	    );
 	world.create_entity()
-	    .with(Lighting(light))
+//	    .with(Lighting(light))
 	    .with(Spatial
 		  {
 		      pos: vec3(pos[0], pos[1], pos[2]),
-		      rot: vec3(rot[0], rot[1], rot[2]),
+		      rot: vec3(0., 0., 0.),
 		      scale: 0.001
 		  })
 	    .with(teto)
@@ -276,12 +280,27 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     }    
 
 
-
-    let light = Light::Point
+    let light = Light::NonDirectional
 	(
-	    1000.,
-	    [0.; 3],
-	    [0.; 3],
+	    10.,
+	    [0., 0., 1.]
+	);
+    world.create_entity()
+	.with(Lighting(light))
+	.with(Spatial
+	      {
+		  pos: vec3(0., 0., 0.),
+		  rot: vec3(0., 0., 0.),
+		  scale: 0.01
+	      })
+	.with(teto)
+	.build();
+
+    
+    let light = Light::NonDirectional
+	(
+	    10.,
+	    [1., 1., 1.],
 	);
     world.create_entity()
 	.with(Lighting(light))
@@ -294,8 +313,18 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 	.with(ControledComp)
 	.with(teto)
 	.build();
+
+    let light = Light::NonDirectional
+	(
+	    0.4,
+	    [0.01, 0., 0.],
+	);
     
+    world.create_entity()
+	.with(Lighting(light))
+	.build();
     
+
     world.insert(physics);
 
     let dispatcher = DispatcherBuilder::new()
@@ -356,6 +385,7 @@ impl<'a> System<'a> for CameraSystem
 	for (spatial, _) in (&mut spatials, &controleds).join()
 	{
 	    spatial.pos = camera.position;
+	    spatial.rot = camera.forward;
 	}
 	
     }
@@ -372,7 +402,7 @@ impl<'a> System<'a> for EventSendingSystem
     fn run(&mut self, (mut sender, devices): Self::SystemData)
     {
 
-	if devices.key_pressed(Key::Escape) {
+	if devices.key_pressed(Key::Escape) || devices.key_pressed(Key::N) {
             sender.push(GameEvent::Push("menu state".to_string()));
 	}
 
@@ -440,9 +470,9 @@ impl<'a> System<'a> for PhysicSystem
 		.get(physic_id)
 		.unwrap()
 		.position().to_homogeneous();
-	    let rotation = normalize(&(isometry * vec4(1., 1., 1., 0.)).xyz());
+	    let rotation = (isometry * vec4(1., 1., 1., 0.)).xyz();
 	    let translation = (isometry * vec4(0., 0., 0., 1.));
-	    spatial.rot = rotation.xyz();
+	    spatial.rot = rotation;
 	    spatial.pos = translation.xyz()/translation[3];
 
 	}
