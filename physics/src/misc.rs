@@ -1,7 +1,10 @@
 extern crate nalgebra as na;
+
 use crate::shapes::*;
 
 use nphysics3d::object::BodyStatus;
+use nphysics3d::object::{DefaultBodySet, DefaultColliderSet, RigidBodyDesc, BodyPartHandle, ColliderDesc, BodyStatus, ActivationStatus};
+use nphysics3d::material::{MaterialHandle, BasicMaterial};
 
 use ncollide3d::shape::ShapeHandle;
 use na::Vector3;
