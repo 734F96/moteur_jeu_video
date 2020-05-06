@@ -13,7 +13,9 @@ use specs::
     System,
     ReadStorage,
     WriteStorage,
-    Join
+    Join,
+    Component,
+    NullStorage
 };
 
 use moteur_jeu_video::
@@ -81,54 +83,63 @@ fn make_menu_scene(
 
 
 
-fn game_logic(game_state: &mut GameState,
-              devices: &DevicesState)
-{
-/*
-    ///////////////////
-    // #################################################################################
-    let mut physics = game_state.physics.as_mut().unwrap();
-    let mut i = 0;
-    physics.run();
-    for object in game_state.scene.objects.iter_mut() {
-        for similarity in object.1.iter_mut() {
-            let homogenous = physics
-                .colliders
-                .get(physics.col_tab[i])
-                .unwrap()
-                .position()
-                .to_homogeneous();
-            let (_, _, scale) = similarity.deconstruct();
-            similarity.world_transformation = *homogenous.as_ref();
-            let (tra, rot, _) = similarity.deconstruct();
-            *similarity = Similarity::new(tra, rot, scale);
-            i += 1;
-        }
-    }
-    // #################################################################################
-*/
-
-
-}
-
 
 fn render_gui(ui: &mut Ui, proxy: &EventLoopProxy<GameEvent>)
 {
     Window::new(im_str!("Pause Menu"))
-        .size([300.0, 110.0], Condition::FirstUseEver)
+        .size([600.0, 400.0], Condition::FirstUseEver)
         .movable(false)
         .no_decoration()
-        .build(&ui, || {
-            if ui.button(im_str!("QUIT"), [60.0, 36.0])
+        .build(&ui, || {            
+            ui.same_line(275.0);
+            ui.text(im_str!("Game menu"));
+            ui.dummy([0.0, 5.0]);
+            ui.new_line();
+            ui.same_line(125.0);
+            if ui.button(im_str!("Back to the game"), [350.0, 36.0])
+            {
+                proxy.send_event(GameEvent::Pop(1));
+            };
+            ui.dummy([0.0, 5.0]);
+            ui.new_line();
+            ui.same_line(125.0);
+            if ui.button(im_str!("Click 1"), [150.0, 36.0])
             {
                 proxy.send_event(GameEvent::QuitRequested);
             };
+            ui.same_line_with_spacing(275.0, 50.0);
+            
+            if ui.button(im_str!("Click 2"), [150.0, 36.0])
+            {
+                proxy.send_event(GameEvent::QuitRequested);
+            };
+            ui.dummy([0.0, 5.0]);
+            ui.new_line();
+            ui.same_line(125.0);
+            if ui.button(im_str!("Click 3"), [150.0, 36.0])
+            {
+                proxy.send_event(GameEvent::QuitRequested);
+            };
+            ui.same_line_with_spacing(275.0, 50.0);
+            
+            if ui.button(im_str!("Click 4"), [150.0, 36.0])
+            {
+                proxy.send_event(GameEvent::QuitRequested);
+            };
+            ui.dummy([0.0, 5.0]);
+            ui.new_line();
+            ui.same_line(125.0);
+            if ui.button(im_str!("Quit the game"), [350.0, 36.0])
+            {
+                proxy.send_event(GameEvent::QuitRequested);
+            };
+            
+           
 
-            ui.text(im_str!("Useless text"));
+            
         });
 
 }
-
 fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dispatcher<'static, 'static>)
 {
     world.register::<Spatial>();
@@ -136,6 +147,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     world.register::<Lighting>();
     world.register::<PhysicComponent>();
     world.insert(DevicesState::default());
+    world.register::<ControledComp>();
     world.insert(Camera::default());
 
     let mut physics = Physics::default();
@@ -193,15 +205,32 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     }
 
     let table = Model(ressources.get_whole_content("table").unwrap());
+    let obj_table = ressources.get_by_handle(table.0);
+    let table_trimesh = make_trimesh(&obj_table);
     let tables_positions = vec! [
         Spatial { pos: vec3(-14.6168, 0.333457, -12.643), rot: vec3(0., -0.33592, 0.), scale: 1. },
         Spatial { pos: vec3(-10.5536, 0.360777, -12.879), rot: vec3(0., 0.94535 , 0.), scale:1.  },
         Spatial { pos: vec3(-12.5902, 0.360777, -10.1726), rot: vec3(0., 0.28788 , 0.), scale:1.  },
         ];
     for position in tables_positions.iter()
-    {   world.create_entity()
+    {
+	let Spatial{pos, rot, scale} = position.clone();
+        let physic_obj_table = table_trimesh
+	    .make_static(pos, rot*std::f32::consts::PI, scale, true);
+	
+        let gen_index = physics.build_rigbd_col(&physic_obj_table);
+
+	let phy = PhysicComponent
+	{
+	    collider_id: gen_index,
+	    shape: table_trimesh.clone()
+	};
+	
+
+	world.create_entity()
         .with(*position)
-        .with(table)
+            .with(table)
+	    .with(phy)
         .build();
     }
  
@@ -290,11 +319,18 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     let col_data = ColData::default();
     let rb_data = RbData::default();
 
+    let light = Light::NonDirectional
+	(
+	    0.4,
+	    [1., 0.8, 0.2]
+	);
+
+    
     for position in bouteilles_positions.iter()
     {
 	let Spatial{pos, rot, scale} = position.clone();
         let physic_obj_bouteille = bouteille_trimesh
-	    .make_object(pos, rot, scale, true);
+	    .make_dynamic(pos, rot, scale, true);
 	
         let gen_index = physics.build_rigbd_col(&physic_obj_bouteille);
 
@@ -308,6 +344,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         world.create_entity()
             .with(*position)
             .with(bouteille)
+	    .with(Lighting(light))
 	    .with(phy)
             .build();
     }
@@ -316,31 +353,15 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 
     let teto = Model(ressources.get_object("teto", "Lat式改変テト_mesh_Lat式改変テト").unwrap());
 
-
-    for _ in 0..4
-    {
-	let radius = 30.;
-	let pos = [(rand::random::<f32>()-0.5)*radius,
-		   (rand::random::<f32>()-0.5)*radius,
-		   (rand::random::<f32>()-0.5)*radius];
-	let rot = [rand::random::<f32>(); 3];
-	let light = Light::Point
-	    (
-		1000.,
-		pos,
-		rot
-	    );
-	world.create_entity()
-	    .with(Lighting(light))
-	    .with(Spatial
-		  {
-		      pos: vec3(pos[0], pos[1], pos[2]),
-		      rot: vec3(rot[0], rot[1], rot[2]),
-		      scale: 0.001
-		  })
-	    .with(teto)
-	    .build();
-    }    
+    let light = Light::NonDirectional
+	(
+	    0.004,
+	    [1., 0.8, 0.2]
+	);
+    world.create_entity()
+	.with(Lighting(light))
+	.build();
+    
 
     world.insert(physics);
 
@@ -354,44 +375,71 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 }
 
 
+
+#[derive(Default)]
+struct ControledComp;
+impl Component for ControledComp
+{
+    type Storage = NullStorage<Self>;
+}
+
 struct CameraSystem;
 
 impl<'a> System<'a> for CameraSystem
 {
     type SystemData = (Write<'a, Camera>,
-		       Read<'a, DevicesState>);
-    fn run(&mut self, (mut camera, devices): Self::SystemData)
+		       Read<'a, DevicesState>,
+		       ReadStorage<'a, ControledComp>,
+		       WriteStorage<'a, Spatial>,
+    		       ReadStorage<'a, PhysicComponent>,
+		       Write<'a, Physics>);
+    fn run(&mut self, (mut camera, devices, controleds, mut spatials, physical, mut physics): Self::SystemData)
     {
+	    let sensibility = 0.003;
+	    let speed = 0.40; // parce que pourquoi pas.
 
-	let sensibility = 0.003;
-	let speed = 0.40; // parce que pourquoi pas.
+	    let (mouse_x, mouse_y) = devices.mouse_motion();
 
-	let (mouse_x, mouse_y) = devices.mouse_motion();
-
-	camera.rotate(
-	    (mouse_x as f32) * sensibility,
-	    (mouse_y as f32) * sensibility
-	);
+	    camera.rotate(
+	        (mouse_x as f32) * sensibility,
+	        (mouse_y as f32) * sensibility
+	    );
 
 	
-	if devices.key_continuous(Key::Q) {
+	    if devices.key_continuous(Key::Q) {
             camera.translate_side(-speed);
-	}
-	if devices.key_continuous(Key::D) {
+	    }
+	    if devices.key_continuous(Key::D) {
             camera.translate_side(speed);
-	}
-	if devices.key_continuous(Key::Z) {
+	    }
+	    if devices.key_continuous(Key::Z) {
             camera.translate_forward(speed);
-	}
-	if devices.key_continuous(Key::S) {
+	    }
+	    if devices.key_continuous(Key::S) {
             camera.translate_forward(-speed);
-	}
-	if devices.key_continuous(Key::Space) {
-	    camera.translate_y(speed);
-	}
-	if devices.key_continuous(Key::LShift) {
-	    camera.translate_y(-speed);
-	}
+	    }
+	    if devices.key_continuous(Key::Space) {
+	        camera.translate_y(speed);
+	    }
+	    if devices.key_continuous(Key::LShift) {
+	        camera.translate_y(-speed);
+	    }
+
+	    for (spatial, _, mut maybe_phy) in (&mut spatials, &controleds, physical.maybe()).join()
+	    {
+	        spatial.pos = camera.position;
+	        spatial.rot = camera.forward;
+		maybe_phy.iter_mut().for_each(
+		    |phy| {
+			physics
+			    .colliders
+			    .get_mut(phy.collider_id)
+			    .unwrap()
+			    .set_position(nalgebra::geometry::Isometry::<_, nalgebra::base::dimension::U3, nalgebra::geometry::UnitQuaternion<_>>::translation(spatial.pos[0], spatial.pos[1], spatial.pos[2]));
+
+		    })
+	    }
+
     }
 }
 
@@ -401,15 +449,12 @@ struct EventSendingSystem;
 impl<'a> System<'a> for EventSendingSystem
 {
 
-    type SystemData = (Write<'a, EventSender>,
-		       Read<'a, DevicesState>);
+    type SystemData = (Write<'a, EventSender>, Read<'a, DevicesState>);
     fn run(&mut self, (mut sender, devices): Self::SystemData)
     {
-
-	if devices.key_pressed(Key::Escape) {
+	if devices.key_pressed(Key::Escape) || devices.key_pressed(Key::N) {
             sender.push(GameEvent::Push("menu state".to_string()));
-	}
-
+	    }
     }
 }
 
@@ -418,15 +463,12 @@ struct MenuEventSystem;
 impl<'a> System<'a> for MenuEventSystem
 {
 
-    type SystemData = (Write<'a, EventSender>,
-		       Read<'a, DevicesState>);
+    type SystemData = (Write<'a, EventSender>, Read<'a, DevicesState>);
     fn run(&mut self, (mut sender, devices): Self::SystemData)
     {
-
-	if devices.key_pressed(Key::Escape) {
+	    if devices.key_pressed(Key::Escape) {
             sender.push(GameEvent::Pop(1));
-	}
-
+	    }
     }
 }
 
@@ -440,45 +482,21 @@ impl<'a> System<'a> for PhysicSystem
 
     fn run(&mut self, (mut physics, mut spatial_st, physical_st): Self::SystemData)
     {
-
-	physics.run();
-
-	for (mut spatial, physic_comp) in (&mut spatial_st, &physical_st).join()
-	{
-	    let physic_id = physic_comp.collider_id;
-	    let Spatial{mut pos, mut rot, mut scale} = spatial;
-
-	    let isometry = physics
-		.colliders
-		.get(physic_id)
-		.unwrap()
-		.position().to_homogeneous();
-	    let rotation = normalize(&(isometry * vec4(1., 1., 1., 0.)).xyz());
-	    let translation = (isometry * vec4(0., 0., 0., 1.));
-	    spatial.rot = rotation.xyz();
-	    spatial.pos = translation.xyz()/translation[3];
+	    physics.run();
+	    for (spatial, physic_comp) in (&mut spatial_st, &physical_st).join()
+	    {
 	    
-	}
+	        let physic_id = physic_comp.collider_id;
 
+	        let isometry = physics
+		    .colliders
+		    .get(physic_id)
+		    .unwrap()
+		    .position();
 
-	/*	
-	for object in game_state.scene.objects.iter_mut() {
-            for similarity in object.1.iter_mut() {
-	let homogenous = physics
-                    .colliders
-                    .get(physics.col_tab[i])
-                    .unwrap()
-                    .position()
-                    .to_homogeneous();
-		let (_, _, scale) = similarity.deconstruct();
-		similarity.world_transformation = *homogenous.as_ref();
-		let (tra, rot, _) = similarity.deconstruct();
-		*similarity = Similarity::new(tra, rot, scale);
-		i += 1;
-            }
-	}
-*/
-
+	        spatial.rot = isometry.rotation.scaled_axis();
+	        spatial.pos = isometry.translation.vector;
+	    }
     }
 }
 
@@ -513,7 +531,6 @@ fn main() -> Result<(), EngineError>
     let mut game = Game::new();
     game.register_state("main state",
                         make_main_scene,
-                        false,
                         None,
                         RenderBehavior::Superpose,
                         LogicBehavior::Superpose,
@@ -521,7 +538,6 @@ fn main() -> Result<(), EngineError>
     );
     game.register_state("menu state",
                         make_menu_scene,
-                        false,
                         Some(render_gui),
                         RenderBehavior::Superpose,
                         LogicBehavior::Blocking,
@@ -532,7 +548,7 @@ fn main() -> Result<(), EngineError>
     game.load_state("menu state")?;
     //    println!("{:?}", game.ressources);
     
-    game.run(20)
+    game.run(10)
 
 }
 

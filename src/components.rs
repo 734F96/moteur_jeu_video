@@ -54,7 +54,7 @@ impl Component for Lighting
 use physics::ShapeType;
 
 /// The indice of the physical object
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PhysicComponent
 {
     pub collider_id: physics::generational_arena::Index,
@@ -64,4 +64,15 @@ pub struct PhysicComponent
 impl Component for PhysicComponent
 {
     type Storage = DenseVecStorage<Self>;
+}
+
+
+use std::fmt;
+
+impl fmt::Debug for PhysicComponent
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
+    {
+	write!(f, "PhysicComponent{{collider_id: {:?}, shape_handle:NOTFORMATABLE}}", self.collider_id)
+    }
 }

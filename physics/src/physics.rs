@@ -108,7 +108,7 @@ impl Physics
         .max_angular_velocity(physic_object.rbdata.max_angular_velocity)
         .angular_inertia(Matrix3::from_diagonal_element(physic_object.rbdata.angular_inertia))
         .mass(physic_object.rbdata.mass)
-        .local_center_of_mass(physic_object.rbdata.local_center_of_mass)
+//        .local_center_of_mass(physic_object.rbdata.local_center_of_mass)
         .sleep_threshold(Some(physic_object.rbdata.sleep_threshold))
         .kinematic_translations(physic_object.rbdata.kinematic_translations)
         .kinematic_rotations(physic_object.rbdata.kinematic_rotations)

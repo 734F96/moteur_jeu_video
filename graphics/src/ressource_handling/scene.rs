@@ -49,7 +49,7 @@ impl Scene {
     {
 
         self.camera.update_aspect_ratio(gr);
-	self.lights.print();
+//	self.lights.print();
         self.objects.iter().for_each(|(objects, instances)| {
 
 

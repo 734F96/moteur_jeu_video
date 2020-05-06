@@ -33,7 +33,7 @@ use graphics::
     RessourcesHolder
 };
 
-use physics::{Physics, make_trimesh};
+use physics::{Physics, make_trimesh, ShapeHandle};
 
 use nalgebra::normalize;
 
@@ -148,7 +148,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-10.7084, 1.2616, -13.1072), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-10.675, 1.2616, -12.679), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-10.471, 1.2616, -12.9902), rot: vec3(0., 0., 0.), scale:1. },
-        Spatial { pos: vec3(-12.5093, 1.2616, -10.2678), rot: vec3(0., 0., 0.), scale:1. },
+        Spatial { pos: vec3(-12.5093, 1.2616, -10.2678), rot: vec3(-0.7, 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.7289, 1.2616, -10.2876), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.613, 1.2616, -10.0908), rot: vec3(0., 0., 0.), scale:1. },
     ];
@@ -156,7 +156,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 
     for position in bouteilles_positions.iter()
     {
-	    let Spatial{pos, rot, scale} = position.clone();
+	let Spatial{pos, rot, scale} = position.clone();
         let physic_obj_bouteille = bouteille_trimesh
 	    .make_dynamic(pos, rot, scale, true);
 	
@@ -193,23 +193,23 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 
     for position in tables_positions.iter()
     {
-	    let Spatial{pos, rot, scale} = position.clone();
+	let Spatial{pos, rot, scale} = position.clone();
         let physic_obj_table = table_trimesh
-	    .make_static(pos, rot*pi, scale, true);
+	    .make_static(pos, rot*std::f32::consts::PI, scale, true);
 	
         let gen_index = physics.build_rigbd_col(&physic_obj_table);
 
-	    let phy = PhysicComponent
-	    {
-	        collider_id: gen_index,
-	        shape: table_trimesh.clone()
-	    };
+	let phy = PhysicComponent
+	{
+	    collider_id: gen_index,
+	    shape: table_trimesh.clone()
+	};
 	
-	    world.create_entity()
-        .with(*position)
-        .with(table)
+	world.create_entity()
+            .with(*position)
+            .with(table)
 	    .with(phy)
-        .build();
+            .build();
     }
 
 
@@ -230,7 +230,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 		[1., 1., 0.]
 	    );
 	world.create_entity()
-//	    .with(Lighting(light))
+	    .with(Lighting(light))
 	    .with(Spatial
 		  {
 		      pos: vec3(pos[0], pos[1], pos[2]),
@@ -287,6 +287,28 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
 	.build();
     
 
+
+    let obj_sphere = ressources.get_by_handle(sphere.0);
+    let trim = make_trimesh(&obj_sphere);
+    let physic_obj = trim
+	.make_kinematic(vec3(0., 0., 0.), vec3(0., 0., 0.), 0.1, false);	
+    let gen_index = physics.build_rigbd_col(&physic_obj);
+
+    let phy = PhysicComponent
+    {
+	collider_id: gen_index,
+	shape: trim.clone()
+    };
+    
+    world.create_entity()
+        .with(Spatial{pos: vec3(0., 0., 0.), rot: vec3(0., 0., 0.), scale: 0.3})
+        .with(sphere)
+	.with(phy)
+//	.with(ControledComp)
+        .build();
+
+
+
     world.insert(physics);
 
     let dispatcher = DispatcherBuilder::new()
@@ -311,8 +333,10 @@ impl<'a> System<'a> for CameraSystem
     type SystemData = (Write<'a, Camera>,
 		       Read<'a, DevicesState>,
 		       ReadStorage<'a, ControledComp>,
-		       WriteStorage<'a, Spatial>);
-    fn run(&mut self, (mut camera, devices, controleds, mut spatials): Self::SystemData)
+		       WriteStorage<'a, Spatial>,
+    		       ReadStorage<'a, PhysicComponent>,
+		       Write<'a, Physics>);
+    fn run(&mut self, (mut camera, devices, controleds, mut spatials, physical, mut physics): Self::SystemData)
     {
 	    let sensibility = 0.003;
 	    let speed = 0.40; // parce que pourquoi pas.
@@ -344,9 +368,19 @@ impl<'a> System<'a> for CameraSystem
 	        camera.translate_y(-speed);
 	    }
 
-	    for (spatial, _) in (&mut spatials, &controleds).join()
+	    for (spatial, _, mut maybe_phy) in (&mut spatials, &controleds, physical.maybe()).join()
 	    {
 	        spatial.pos = camera.position;
+	        spatial.rot = camera.forward;
+		maybe_phy.iter_mut().for_each(
+		    |phy| {
+			physics
+			    .colliders
+			    .get_mut(phy.collider_id)
+			    .unwrap()
+			    .set_position(nalgebra::geometry::Isometry::<_, nalgebra::base::dimension::U3, nalgebra::geometry::UnitQuaternion<_>>::translation(spatial.pos[0], spatial.pos[1], spatial.pos[2]));
+
+		    })
 	    }
 
     }
@@ -391,29 +425,7 @@ impl<'a> System<'a> for PhysicSystem
 
     fn run(&mut self, (mut physics, mut spatial_st, physical_st): Self::SystemData)
     {
-	    /*
-	    for (spatial, physic_comp) in (&spatial_st, &physical_st).join()
-	    {
-	    
-	        let physic_id = physic_comp.collider_id;
-
-	        let mut pos = spatial.pos;
-	        let mut rot = spatial.rot;
-
-	        pos[2] += 0.1;
-	    
-	        let isometry =nalgebra::geometry::Isometry::<_, nalgebra::base::dimension::U3, nalgebra::geometry::UnitQuaternion<_>>::new(pos, rot);
-
-	        physics
-		    .colliders
-		    .get_mut(physic_id)
-		    .unwrap()
-		    .set_position(isometry);
-
-	    }
-        */
 	    physics.run();
-
 	    for (spatial, physic_comp) in (&mut spatial_st, &physical_st).join()
 	    {
 	    
@@ -423,7 +435,7 @@ impl<'a> System<'a> for PhysicSystem
 		    .colliders
 		    .get(physic_id)
 		    .unwrap()
-            .position();
+		    .position();
 
 	        spatial.rot = isometry.rotation.scaled_axis();
 	        spatial.pos = isometry.translation.vector;
