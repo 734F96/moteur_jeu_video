@@ -33,9 +33,9 @@ use graphics::
     RessourcesHolder
 };
 
-use physics::{Physics, make_trimesh, ShapeType, RbData, ColData};
+use physics::{Physics, make_trimesh};
 
-use nalgebra::{Translation, Rotation, normalize};
+use nalgebra::normalize;
 
 
 fn make_main_scene(
@@ -63,7 +63,7 @@ fn make_main_scene(
 
     holder.add_parameters(Params::new().with_transparency(true), "Sphere");
 
-    let mut scene = Scene::new(&disp);
+    let scene = Scene::new(&disp);
 
 
     Ok(scene)
@@ -76,11 +76,10 @@ fn make_menu_scene(
 {
     let disp = &game.graphic_engine.display;
     
-    let mut scene = Scene::new(&disp);
+    let scene = Scene::new(&disp);
 
     Ok(scene)
 }
-
 
 
 
@@ -153,18 +152,20 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     let mut physics = Physics::default();
     
     let sphere = Model(ressources.get_object("transparent_sphere", "Sphere").unwrap());
+
     for _ in 0..50
     {
         let spatial = Spatial
         {
-                pos: vec3(rand::random(), rand::random(), rand::random()),
-                rot: vec3(rand::random(), rand::random(), rand::random()),
-                scale: 0.001
+            pos: vec3(rand::random(), rand::random(), rand::random()),
+            rot: vec3(rand::random(), rand::random(), rand::random()),
+            scale: 0.001
         };
+
         world.create_entity()
-            .with(spatial)
-            .with(sphere)
-            .build();
+        .with(spatial)
+        .with(sphere)
+        .build();
     }
 
     let map_elements = Model(ressources.get_whole_content("saloon").unwrap());
@@ -174,6 +175,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         rot: vec3(0., 0., 0.),
         scale: 1.
     };
+
     world.create_entity()
 	.with(zero)
 	.with(map_elements)
@@ -181,12 +183,14 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     
     let porte_chambre = Model(ressources.get_whole_content("porte_chambre").unwrap());
     let portes_chambres_positions = vec! [
-            Spatial { pos: vec3(-19.3022, 3.41965, -17.4815), rot: vec3(0., 0., 0.), scale: 1. },
-            Spatial { pos: vec3(-15.5513, 3.41965, -17.4815), rot: vec3(0., 0., 0.), scale: 1. },
-            Spatial { pos: vec3(-10.5668, 3.41965, -17.4815), rot: vec3(0., 0.6981, 0.), scale: 1. },
-            ];
+        Spatial { pos: vec3(-19.3022, 3.41965, -17.4815), rot: vec3(0., 0., 0.), scale: 1. },
+        Spatial { pos: vec3(-15.5513, 3.41965, -17.4815), rot: vec3(0., 0., 0.), scale: 1. },
+        Spatial { pos: vec3(-10.5668, 3.41965, -17.4815), rot: vec3(0., 0.6981, 0.), scale: 1. },
+    ];
+
     for position in portes_chambres_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(porte_chambre)
         .build();
@@ -194,11 +198,13 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     
     let porte_entree = Model(ressources.get_whole_content("porte_entree").unwrap());
     let portes_entree_positions = vec! [
-            Spatial { pos: vec3(-9.64833, 1.46962, -8.76043), rot: vec3(0., 0.7853, 0.), scale: 1. },
-            Spatial { pos: vec3(-8.71997, 1.46962, -9.68726), rot: vec3(0., -2.3561, 0.), scale: 1.  },
-            ];
+        Spatial { pos: vec3(-9.64833, 1.46962, -8.76043), rot: vec3(0., 0.7853, 0.), scale: 1. },
+        Spatial { pos: vec3(-8.71997, 1.46962, -9.68726), rot: vec3(0., -2.3561, 0.), scale: 1.  },
+    ];
+
     for position in portes_entree_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(porte_entree)
         .build();
@@ -211,7 +217,8 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-14.6168, 0.333457, -12.643), rot: vec3(0., -0.33592, 0.), scale: 1. },
         Spatial { pos: vec3(-10.5536, 0.360777, -12.879), rot: vec3(0., 0.94535 , 0.), scale:1.  },
         Spatial { pos: vec3(-12.5902, 0.360777, -10.1726), rot: vec3(0., 0.28788 , 0.), scale:1.  },
-        ];
+    ];
+
     for position in tables_positions.iter()
     {
 	let Spatial{pos, rot, scale} = position.clone();
@@ -239,9 +246,11 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-13.8841, 3.27735, -19.7949), rot: vec3(0., -1.5707, 0.), scale:1. },
         Spatial { pos: vec3(-19.6265, 3.27735, -19.7949), rot: vec3(0., 1.5707 , 0.), scale:1.  },
         Spatial { pos: vec3(-11.0315, 3.27735, -19.7949), rot: vec3(0., 1.5707, 0.), scale:1. },
-        ];
+    ];
+
     for position in lits_doubles_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(lit_double)
         .build();
@@ -252,10 +261,11 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-14.714, 0.325766, -11.6007), rot: vec3(0., 3.1415, 0.), scale:1. },
         Spatial { pos: vec3(-13.6238, 0.325766, -13.0231), rot: vec3(0., -1.22495, 0.), scale:1. },
         Spatial { pos: vec3(-15.3367, 0.325766, -13.4179), rot: vec3(0., 0.72583, 0.), scale:1. },
-        ];
+    ];
 
     for position in chaises_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(chaise)
         .build();
@@ -271,9 +281,11 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-13.5902, 0.360777, -10.1726), rot: vec3(0., 0., 0.),scale: 1. },
         Spatial { pos: vec3(-12.5902, 0.360777, -9.1726), rot: vec3(0., 0., 0.),scale: 1. },
         Spatial { pos: vec3(-12.5902, 0.360777, -11.1726), rot: vec3(0., 0., 0.), scale:1. },
-        ];
+    ];
+
     for position in tabourets_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(tabourets)
         .build();
@@ -288,9 +300,11 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-12.4423, 1.2616, -9.69564), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.9243, 1.2616, -9.96789), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.7213, 1.2616, -10.7131), rot: vec3(0., 0., 0.), scale:1. },
-        ];
+    ];
+
     for position in verres_positions.iter()
-    {   world.create_entity()
+    {   
+        world.create_entity()
         .with(*position)
         .with(verres)
         .build();
@@ -314,10 +328,7 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
         Spatial { pos: vec3(-12.5093, 1.2616, -10.2678), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.7289, 1.2616, -10.2876), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.613, 1.2616, -10.0908), rot: vec3(0., 0., 0.), scale:1. },
-        ];
-
-    let col_data = ColData::default();
-    let rb_data = RbData::default();
+    ];
 
     let light = Light::NonDirectional
 	(
@@ -328,17 +339,17 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
     
     for position in bouteilles_positions.iter()
     {
-	let Spatial{pos, rot, scale} = position.clone();
+	    let Spatial{pos, rot, scale} = position.clone();
         let physic_obj_bouteille = bouteille_trimesh
 	    .make_dynamic(pos, rot, scale, true);
 	
         let gen_index = physics.build_rigbd_col(&physic_obj_bouteille);
 
-	let phy = PhysicComponent
-	{
-	    collider_id: gen_index,
-	    shape: bouteille_trimesh.clone()
-	};
+	    let phy = PhysicComponent
+	    {
+	        collider_id: gen_index,
+	        shape: bouteille_trimesh.clone()
+	    };
 
 	
         world.create_entity()
@@ -346,10 +357,8 @@ fn init_game(mut world: World, ressources: &mut RessourcesHolder) -> (World, Dis
             .with(bouteille)
 	    .with(Lighting(light))
 	    .with(phy)
-            .build();
+        .build();
     }
-
-
 
     let teto = Model(ressources.get_object("teto", "Lat式改変テト_mesh_Lat式改変テト").unwrap());
 
@@ -404,7 +413,6 @@ impl<'a> System<'a> for CameraSystem
 	        (mouse_x as f32) * sensibility,
 	        (mouse_y as f32) * sensibility
 	    );
-
 	
 	    if devices.key_continuous(Key::Q) {
             camera.translate_side(-speed);
@@ -452,7 +460,7 @@ impl<'a> System<'a> for EventSendingSystem
     type SystemData = (Write<'a, EventSender>, Read<'a, DevicesState>);
     fn run(&mut self, (mut sender, devices): Self::SystemData)
     {
-	if devices.key_pressed(Key::Escape) || devices.key_pressed(Key::N) {
+	    if devices.key_pressed(Key::Escape) {
             sender.push(GameEvent::Push("menu state".to_string()));
 	    }
     }
@@ -476,9 +484,7 @@ struct PhysicSystem;
 
 impl<'a> System<'a> for PhysicSystem
 {
-    type SystemData = (Write<'a, Physics>,
-		       WriteStorage<'a, Spatial>,
-		       ReadStorage<'a, PhysicComponent>);
+    type SystemData = (Write<'a, Physics>, WriteStorage<'a, Spatial>, ReadStorage<'a, PhysicComponent>);
 
     fn run(&mut self, (mut physics, mut spatial_st, physical_st): Self::SystemData)
     {
@@ -534,21 +540,22 @@ fn main() -> Result<(), EngineError>
                         None,
                         RenderBehavior::Superpose,
                         LogicBehavior::Superpose,
-			init_game
+			            init_game
     );
+
     game.register_state("menu state",
                         make_menu_scene,
                         Some(render_gui),
                         RenderBehavior::Superpose,
                         LogicBehavior::Blocking,
-			init_menu
+			            init_menu
 
     );
+
     game.push_state("main state")?;
     game.load_state("menu state")?;
-    //    println!("{:?}", game.ressources);
     
-    game.run(10)
+    game.run(10) // fps
 
 }
 

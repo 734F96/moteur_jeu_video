@@ -78,7 +78,7 @@ impl ShapeType
         {
             ShapeType::TriMesh(trimesh) => {
             
-                let mut shape = ShapeType::TriMesh(trimesh.clone());
+                let shape = ShapeType::TriMesh(trimesh.clone());
 
 		        let center: Point3<f32> = trimesh
 		        .points.iter()
@@ -87,12 +87,12 @@ impl ShapeType
                 let rb_data = RbData::new(
                     translation,                            // translation
                     rotation,                               // rotation
-                    gravity,                                   // gravity_enabled
+                    gravity,                                // gravity_enabled
                     stat,                                   // bodystatus
-                    Vector3::new(0.0, 0.0, 0.0),            // linear_velocity
-                    Vector3::new(0.0, 0.0, 0.0),            // angular_velocity
-                    0.0,                                    // linear_damping
-                    0.0,                                    // angular_damping
+                    Vector3::new(5.0, 0.0, 0.0),            // linear_velocity
+                    Vector3::new(5.0, 0.0, 0.0),            // angular_velocity
+                    0.8,                                    // linear_damping
+                    1.8,                                    // angular_damping
                     INFINITY,                               // max_linear_velocity
                     INFINITY,                               // max_angular_velocity
                     0.0,                                    // angular_inertia
@@ -109,7 +109,7 @@ impl ShapeType
                 let col_data = ColData::new(
                     Vector3::new(0.0, 0.0, 0.0),            // translation relative to the RigidBody it's attached to
                     Vector3::new(0.0, 0.0, 0.0),            // rotation relative to the RigidBody it's attached to
-                    0.0,                                    // density
+                    0.0,                                    // density ! Since we use TriMesh objects it needs to be 0.0 or game will crash !
                     0.5,                                    // restitution
                     0.2,                                    // friction
                     0.01,                                   // margin
@@ -118,17 +118,12 @@ impl ShapeType
                     false,                                  // sensor
                     0                                       // user_data
                 );
-
 		
                 PhysicObject::new(shape, rb_data, col_data)  
-    
             },
             _ => unimplemented!()
         }
-            
-        
     }
-    
 }
 
 
@@ -343,5 +338,5 @@ pub fn make_trimesh(object: &Object) -> ShapeType
 
     let indices = (0..(all_vertex.len()/3)).map(|i| {Point3::new(3*i, 3*i+1, 3*i+2)}).collect::<Vec<_>>() ;
 
-    ShapeType::TriMesh(TriMesh::new(all_vertex, indices, None))  // Il faudra peut être le scale
+    ShapeType::TriMesh(TriMesh::new(all_vertex, indices, None))  // We might need the scale
 }
