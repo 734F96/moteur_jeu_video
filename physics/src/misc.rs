@@ -43,7 +43,11 @@ impl ShapeType
 	scale: f32,
 	gravity: bool) -> PhysicObject
     {
-	    self.make_object(translation, rotation, scale, gravity, BodyStatus::Static, None, None)
+	self.make_object(translation,
+			 rotation,
+			 scale,
+			 gravity,
+			 BodyStatus::Static, None, None)
     }
 
     /// Construct a PhysicObject with a BodyStatus::Dynamic (all movements allowed)
@@ -54,7 +58,11 @@ impl ShapeType
 	scale: f32,
 	gravity: bool) -> PhysicObject
     {
-	    self.make_object(translation, rotation, scale, gravity, BodyStatus::Dynamic, None, None)
+	self.make_object(translation,
+			 rotation,
+			 scale,
+			 gravity,
+			 BodyStatus::Dynamic, None, None)
     }
 
     /// Construct a PhysicObject with a BodyStatus::Kinematic (movements non affected by external forces)
@@ -63,15 +71,13 @@ impl ShapeType
 	translation: Vector3<f32>,
 	rotation: Vector3<f32>,
 	scale: f32,
-    gravity: bool,
-    kinematic_rotations : Vector3<bool>,
-    kinematic_translations : Vector3<bool>) -> PhysicObject
+	gravity: bool) -> PhysicObject
     {
-	    self.make_object(translation, rotation, scale, gravity, BodyStatus::Kinematic, Some(kinematic_rotations), Some(kinematic_translations))
+	    self.make_object(translation, rotation, scale, gravity, BodyStatus::Kinematic, None, None)
     }
 
     /// Construct a PhysicObject with a BodyStatus::Dynamic (movements allowed but restrictions on translations and rotations)
-    pub fn make_dynamic_sans_liberte(
+    pub fn make_dynamic_constrained(
         &self,
         translation: Vector3<f32>,
         rotation: Vector3<f32>,
@@ -98,13 +104,42 @@ impl ShapeType
         match self
         {
             ShapeType::TriMesh(trimesh) => {
-            
+
+		let trimesh = trimesh.scale(scale);
+		
+		
                 let shape = ShapeType::TriMesh(trimesh.clone());
 
-		        let center: Point3<f32> = trimesh
-		        .points.iter()
-		        .fold(Point3::new(0., 0., 0.), |sum, p| sum+p.coords) / (trimesh.points.len() as f32);
-          
+		let center: Point3<f32> = trimesh
+		    .points.iter()
+		    .fold(Point3::new(0., 0., 0.), |sum, p| sum+p.coords) / (trimesh.points.len() as f32);
+
+
+		
+		let cmp = |a: &Point3<_>, b: &Point3<_>|
+		{
+		    let diff = a[1]-b[1];
+		    if diff == 0.
+		    {
+			std::cmp::Ordering::Equal
+		    }
+		    else if diff < 0.
+		    {
+			std::cmp::Ordering::Less
+		    }
+		    else
+		    {
+std::cmp::Ordering::Greater
+		    }
+		};
+		let min = trimesh.points.iter().min_by(|a, b| cmp(a, b));
+		let max = trimesh.points.iter().max_by(|a, b| cmp(a, b));
+
+		println!("MIN  Y: {:?}", min.unwrap());
+		println!("CENTER: {:?}", center);
+		println!("MAX  Y: {:?}", max.unwrap());
+		println!();
+		
                 let rb_data = RbData::new(
                     translation,                            // translation
                     rotation,                               // rotation
@@ -116,9 +151,9 @@ impl ShapeType
                     1.8,                                    // angular_damping
                     INFINITY,                               // max_linear_velocity
                     INFINITY,                               // max_angular_velocity
-                    0.0,                                    // angular_inertia
-                    2000.0,                                 // mass
-                    center                    ,             // local_center_of_mass
+                    3.0,                                    // angular_inertia
+                    8.0,                                    // mass
+                    center,                                 // local_center_of_mass
                     ActivationStatus::default_threshold(),  // sleep_threshold
                     kinematic_trans.unwrap_or(Vector3::new(false, false, false)),                  // kinematic_translations
                     kinematic_rot.unwrap_or(Vector3::new(false, false, false)),                    // kinematic_rotations
@@ -315,6 +350,12 @@ impl PhysicObject {
             coldata: coldata
         }
     }
+    /* todo
+    pub fn contraint_liberties(&mut self, trans: Vector3<bool>, rot: Vector3<bool>)
+    {
+	
+    }
+     */
 }
 
 

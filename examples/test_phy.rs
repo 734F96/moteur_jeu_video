@@ -162,7 +162,7 @@ println!("MARCO");
         Spatial { pos: vec3(-10.7084, 1.2616, -13.1072), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-10.675, 1.2616, -12.679), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-10.471, 1.2616, -12.9902), rot: vec3(0., 0., 0.), scale:1. },
-        Spatial { pos: vec3(-12.5093, 1.2616, -10.2678), rot: vec3(-0.7, 0., 0.), scale:1. },
+        Spatial { pos: vec3(-12.5093, 2.2616, -10.2678), rot: vec3(-1.99, 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.7289, 1.2616, -10.2876), rot: vec3(0., 0., 0.), scale:1. },
         Spatial { pos: vec3(-12.613, 1.2616, -10.0908), rot: vec3(0., 0., 0.), scale:1. },
     ];
@@ -445,21 +445,21 @@ impl<'a> System<'a> for PhysicSystem
 
     fn run(&mut self, (mut physics, mut spatial_st, physical_st): Self::SystemData)
     {
-	    physics.run();
-	    for (spatial, physic_comp) in (&mut spatial_st, &physical_st).join()
-	    {
+	physics.run();
+	for (spatial, physic_comp) in (&mut spatial_st, &physical_st).join()
+	{
 	    
-	        let physic_id = physic_comp.collider_id;
-
-	        let isometry = physics
-		    .colliders
-		    .get(physic_id)
-		    .unwrap()
-		    .position();
-
-	        spatial.rot = isometry.rotation.scaled_axis();
-	        spatial.pos = isometry.translation.vector;
-	    }
+	    let physic_id = physic_comp.collider_id;
+	    
+	    let isometry = physics
+		.colliders
+		.get(physic_id)
+		.unwrap()
+		.position();
+	    
+	    spatial.rot = isometry.rotation.scaled_axis();
+	    spatial.pos = isometry.translation.vector;
+	}
     }
 }
 

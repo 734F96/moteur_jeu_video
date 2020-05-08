@@ -34,4 +34,15 @@ impl TriMesh{
 
         return trim;
     }
+
+    pub fn scale(&self, scale: f32) -> Self
+    {
+	Self
+	{
+	    points: self.points.iter().map(|point| point*scale).collect::<Vec<_>>(),
+	    indices: self.indices.clone(),
+	    uvs: self.uvs.clone()
+	}
+    }
+    
 }
